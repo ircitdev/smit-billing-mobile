@@ -1,0 +1,41 @@
+name: smit_billing
+description: Мобильное приложение абонента СмИТ Биллинг
+publish_to: 'none'
+version: 1.1.0+3
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # UI
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+  fl_chart: ^0.69.2
+  # State management
+  provider: ^6.1.2
+  # HTTP & API
+  http: ^1.2.1
+  # Auth & Storage
+  flutter_secure_storage: ^9.2.2
+  jwt_decoder: ^2.0.1
+  local_auth: ^2.3.0
+  # Push
+  firebase_core: ^2.32.0
+  firebase_messaging: ^14.9.4
+  # Payment & Links
+  url_launcher: ^6.3.1
+  # Utils
+  intl: ^0.19.0
+  shared_preferences: ^2.3.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
