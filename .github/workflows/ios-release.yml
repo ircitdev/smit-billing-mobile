@@ -86,6 +86,8 @@ jobs:
             GCC_PREPROCESSOR_DEFINITIONS='$(inherited) PERMISSION_NOTIFICATIONS=1' \
             OTHER_SWIFT_FLAGS='$(inherited) -Xcc -Wno-error=non-modular-include-in-framework-module' \
             CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES=YES \
+            DEVELOPMENT_TEAM=6LX2W6558K \
+            CODE_SIGN_STYLE=Automatic \
             archive
 
       - name: Export IPA
