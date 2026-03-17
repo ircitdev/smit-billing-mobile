@@ -39,7 +39,8 @@
       "Bash(ssh:*)",
       "Bash(git add:*)",
       "Bash(git rm:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(gh run:*)"
     ]
   }
 }
