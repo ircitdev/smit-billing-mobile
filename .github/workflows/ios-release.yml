@@ -127,9 +127,11 @@ jobs:
           APP_STORE_API_KEY_ID: ${{ secrets.APP_STORE_API_KEY_ID }}
           APP_STORE_API_ISSUER_ID: ${{ secrets.APP_STORE_API_ISSUER_ID }}
         run: |
+          IPA_PATH=$(find build/ios/ipa -name "*.ipa" | head -1)
+          echo "Uploading: $IPA_PATH"
           xcrun altool --upload-app \
             --type ios \
-            -f build/ios/ipa/*.ipa \
+            -f "$IPA_PATH" \
             --apiKey ${APP_STORE_API_KEY_ID} \
             --apiIssuer ${APP_STORE_API_ISSUER_ID}
 
