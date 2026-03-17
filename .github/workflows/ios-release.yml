@@ -113,21 +113,28 @@ jobs:
           APP_STORE_API_KEY_ID: ${{ secrets.APP_STORE_API_KEY_ID }}
           APP_STORE_API_ISSUER_ID: ${{ secrets.APP_STORE_API_ISSUER_ID }}
         run: |
+          mkdir -p $RUNNER_TEMP/ipa_output
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/Runner.xcarchive \
             -exportOptionsPlist ios/ExportOptions.plist \
-            -exportPath build/ios/ipa \
+            -exportPath $RUNNER_TEMP/ipa_output \
             -allowProvisioningUpdates \
             -authenticationKeyPath ~/private_keys/AuthKey_${APP_STORE_API_KEY_ID}.p8 \
             -authenticationKeyID ${APP_STORE_API_KEY_ID} \
             -authenticationKeyIssuerID ${APP_STORE_API_ISSUER_ID}
+
+          echo "Export contents:"
+          ls -la $RUNNER_TEMP/ipa_output/
+
+          mkdir -p build/ios/ipa
+          cp $RUNNER_TEMP/ipa_output/*.ipa build/ios/ipa/ 2>/dev/null || true
 
       - name: Upload to App Store Connect
         env:
           APP_STORE_API_KEY_ID: ${{ secrets.APP_STORE_API_KEY_ID }}
           APP_STORE_API_ISSUER_ID: ${{ secrets.APP_STORE_API_ISSUER_ID }}
         run: |
-          IPA_PATH=$(find build/ios/ipa -name "*.ipa" | head -1)
+          IPA_PATH=$(find $RUNNER_TEMP/ipa_output build/ios/ipa -name "*.ipa" 2>/dev/null | head -1)
           echo "Uploading: $IPA_PATH"
           xcrun altool --upload-app \
             --type ios \
