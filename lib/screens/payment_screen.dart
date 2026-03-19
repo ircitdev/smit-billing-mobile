@@ -159,22 +159,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
             // Quick amounts
             Wrap(
               spacing: 8,
-              children: [
+              children: ([
                 if (debt > 0) debt,
                 100,
                 300,
                 500,
                 1000,
-              ].toSet().toList()
-                ..sort()
-                ..map((amount) {
-                  return ActionChip(
-                    label: Text('$amount \u20BD'),
-                    onPressed: () {
-                      _amountController.text = amount.toString();
-                    },
-                  );
-                }).toList(),
+              ].toSet().toList()..sort()).map((amount) {
+                return ActionChip(
+                  label: Text('$amount \u20BD'),
+                  onPressed: () {
+                    _amountController.text = amount.toString();
+                  },
+                );
+              }).toList(),
             ),
             const SizedBox(height: 24),
 

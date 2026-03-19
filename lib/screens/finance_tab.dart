@@ -53,13 +53,16 @@ class _FinanceTabState extends State<FinanceTab> {
       ),
       body: Column(
         children: [
-          // Promise pay banner
+          // Promise pay banner (hide if positive balance)
           FutureBuilder<Map<String, dynamic>>(
             future: account.getPromisePay(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) return const SizedBox();
               final pp = snapshot.data!;
               final hasActive = pp['has_active'] == true;
+              // Hide if balance > 0 and no active promise pay
+              final balance = account.status?.balance ?? 0;
+              if (balance > 0 && !hasActive) return const SizedBox();
               return Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Card(

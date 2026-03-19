@@ -4,11 +4,35 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../providers/account_provider.dart';
 import '../providers/theme_provider.dart';
+import '../services/review_service.dart';
 import 'messages_screen.dart';
 import 'change_password_screen.dart';
+import 'snake_game.dart';
 
-class ProfileTab extends StatelessWidget {
+class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
+
+  @override
+  State<ProfileTab> createState() => _ProfileTabState();
+}
+
+class _ProfileTabState extends State<ProfileTab> {
+  int _avatarTapCount = 0;
+  DateTime? _lastTap;
+
+  void _onAvatarTap() {
+    final now = DateTime.now();
+    if (_lastTap != null && now.difference(_lastTap!).inMilliseconds > 800) {
+      _avatarTapCount = 0; // reset if too slow
+    }
+    _lastTap = now;
+    _avatarTapCount++;
+    if (_avatarTapCount >= 6) {
+      _avatarTapCount = 0;
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const SnakeGame()));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,13 +52,16 @@ class ProfileTab extends StatelessWidget {
             Center(
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 40,
-                    child: Text(
-                      status != null && status.name.isNotEmpty
-                          ? status.name[0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(fontSize: 32),
+                  GestureDetector(
+                    onTap: _onAvatarTap,
+                    child: CircleAvatar(
+                      radius: 40,
+                      child: Text(
+                        status != null && status.name.isNotEmpty
+                            ? status.name[0].toUpperCase()
+                            : '?',
+                        style: const TextStyle(fontSize: 32),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -314,6 +341,19 @@ class ProfileTab extends StatelessWidget {
 
             const Divider(height: 32),
 
+            // Rate app
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.star_outline, color: Colors.amber),
+                title: const Text('Оценить приложение'),
+                subtitle: const Text('Поставьте оценку в Google Play'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => ReviewService.openStoreListing(),
+              ),
+            ),
+
+            const Divider(height: 32),
+
             // Legal
             ListTile(
               leading: const Icon(Icons.privacy_tip_outlined),
@@ -374,7 +414,7 @@ class ProfileTab extends StatelessWidget {
             const SizedBox(height: 16),
             Center(
               child: Text(
-                'v1.1.0',
+                'v1.2.1',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),

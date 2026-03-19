@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/account_provider.dart';
+import '../services/review_service.dart';
 import 'dashboard_tab.dart';
 import 'finance_tab.dart';
 import 'support_tab.dart';
@@ -28,10 +29,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     // Load account data on first open
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final acc = context.read<AccountProvider>();
-      acc.loadStatus();
+      await acc.loadStatus();
       acc.loadHistory();
+      // Try to show in-app review for loyal users
+      final balance = acc.status?.balance ?? 0;
+      ReviewService.tryRequestReview(balancePositive: balance >= 0);
     });
   }
 

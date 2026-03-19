@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import '../services/api_client.dart';
 import '../services/push_service.dart';
+import '../services/review_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiClient api = ApiClient();
@@ -86,6 +87,7 @@ class AuthProvider extends ChangeNotifier {
       _isAuthenticated = true;
       _isLoading = false;
       _initPush();
+      ReviewService.recordLogin();
       notifyListeners();
       return true;
     } on ApiException catch (e) {

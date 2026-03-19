@@ -25,6 +25,10 @@ class AccountProvider extends ChangeNotifier {
     _api = auth.api;
   }
 
+  /// Public API access for screens that need custom endpoints.
+  Future<dynamic> apiGet(String path) async => _api?.get(path);
+  Future<dynamic> apiPost(String path, Map<String, dynamic> body) async => _api?.post(path, body);
+
   Future<void> loadStatus() async {
     if (_api == null) return;
     _isLoading = true;
