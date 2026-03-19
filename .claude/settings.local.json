@@ -41,7 +41,10 @@
       "Bash(git rm:*)",
       "Bash(git checkout:*)",
       "Bash(gh run:*)",
-      "Bash(pip3 install:*)"
+      "Bash(pip3 install:*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(gh api:*)",
+      "Bash(wc:*)"
     ]
   }
 }
