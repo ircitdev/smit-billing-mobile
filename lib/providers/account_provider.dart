@@ -107,13 +107,13 @@ class AccountProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> createPayment(double amount) async {
+  Future<Map<String, dynamic>?> createPayment(double amount) async {
     try {
       final data = await _api!.post('/finance/pay', {
         'amount': amount.toStringAsFixed(2),
         'system': 'yookassa',
       });
-      return data['redirect_url'];
+      return data;
     } on ApiException {
       return null;
     }
