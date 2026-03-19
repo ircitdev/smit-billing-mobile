@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../providers/account_provider.dart';
+import 'messages_screen.dart';
 import 'change_password_screen.dart';
 
 class ProfileTab extends StatelessWidget {
@@ -71,6 +72,21 @@ class ProfileTab extends StatelessWidget {
                 subtitle: '${status.balance.toStringAsFixed(2)} \u20BD',
               ),
             ],
+
+            const Divider(height: 32),
+
+            // Messages
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.mail_outline),
+                title: const Text('Сообщения от оператора'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const MessagesScreen()));
+                },
+              ),
+            ),
 
             const Divider(height: 32),
 
