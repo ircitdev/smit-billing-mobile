@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../providers/account_provider.dart';
+import '../providers/theme_provider.dart';
 import 'messages_screen.dart';
 import 'change_password_screen.dart';
 
@@ -262,6 +263,79 @@ class ProfileTab extends StatelessWidget {
                   child: const Text('Привязать'),
                 ),
               ),
+            ),
+
+            const Divider(height: 32),
+
+            // Theme selector
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.palette, size: 20, color: colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text('Тема оформления',
+                      style: Theme.of(context).textTheme.titleMedium),
+                ],
+              ),
+            ),
+            Consumer<ThemeProvider>(
+              builder: (context, themeProv, _) {
+                return Card(
+                  child: Column(
+                    children: [
+                      RadioListTile<ThemeMode>(
+                        title: const Text('Системная'),
+                        subtitle: const Text('Как в настройках устройства'),
+                        value: ThemeMode.system,
+                        groupValue: themeProv.themeMode,
+                        onChanged: (v) => themeProv.setThemeMode(v!),
+                        dense: true,
+                      ),
+                      RadioListTile<ThemeMode>(
+                        title: const Text('Светлая'),
+                        value: ThemeMode.light,
+                        groupValue: themeProv.themeMode,
+                        onChanged: (v) => themeProv.setThemeMode(v!),
+                        dense: true,
+                      ),
+                      RadioListTile<ThemeMode>(
+                        title: const Text('Тёмная'),
+                        value: ThemeMode.dark,
+                        groupValue: themeProv.themeMode,
+                        onChanged: (v) => themeProv.setThemeMode(v!),
+                        dense: true,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+            const Divider(height: 32),
+
+            // Legal
+            ListTile(
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('Политика конфиденциальности'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                final uri = Uri.parse('https://billing.smit34.ru/privacy.html');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: const Text('Пользовательское соглашение'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                final uri = Uri.parse('https://billing.smit34.ru/copyright.html');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
             ),
 
             const Divider(height: 32),
