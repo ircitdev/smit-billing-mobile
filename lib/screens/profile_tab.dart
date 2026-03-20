@@ -20,6 +20,15 @@ class _ProfileTabState extends State<ProfileTab> {
   int _avatarTapCount = 0;
   DateTime? _lastTap;
 
+  String _getInitials(String name) {
+    if (name.isEmpty) return '?';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
+  }
+
   void _onAvatarTap() {
     final now = DateTime.now();
     if (_lastTap != null && now.difference(_lastTap!).inMilliseconds > 800) {
@@ -57,10 +66,8 @@ class _ProfileTabState extends State<ProfileTab> {
                     child: CircleAvatar(
                       radius: 40,
                       child: Text(
-                        status != null && status.name.isNotEmpty
-                            ? status.name[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(fontSize: 32),
+                        _getInitials(status?.name ?? ''),
+                        style: const TextStyle(fontSize: 28),
                       ),
                     ),
                   ),
@@ -103,6 +110,11 @@ class _ProfileTabState extends State<ProfileTab> {
 
             const Divider(height: 32),
 
+            // Services section
+            _ServicesSection(),
+
+            const Divider(height: 32),
+
             // Messages
             Card(
               child: ListTile(
@@ -131,15 +143,21 @@ class _ProfileTabState extends State<ProfileTab> {
               ),
             ),
             if (status != null) ...[
-              _ContactField(
+              _EditableContactField(
                 label: 'Email',
-                value: status.email.isNotEmpty ? status.email : 'Не указан',
+                value: status.email,
                 icon: Icons.email_outlined,
+                fieldKey: 'email',
+                keyboardType: TextInputType.emailAddress,
+                hintText: 'example@mail.ru',
               ),
-              _ContactField(
+              _EditableContactField(
                 label: 'Телефон для SMS',
-                value: status.sms.isNotEmpty ? status.sms : 'Не указан',
+                value: status.sms,
                 icon: Icons.sms_outlined,
+                fieldKey: 'sms',
+                keyboardType: TextInputType.phone,
+                hintText: '+79001234567',
               ),
               const SizedBox(height: 4),
               Padding(
@@ -280,11 +298,23 @@ class _ProfileTabState extends State<ProfileTab> {
                 subtitle: const Text('Не привязан'),
                 trailing: OutlinedButton(
                   onPressed: () async {
-                    final uri =
-                        Uri.parse('https://t.me/SMITSupport_bot?start=login');
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri,
-                          mode: LaunchMode.externalApplication);
+                    final authProvider = context.read<AuthProvider>();
+                    final scaffoldMessenger = ScaffoldMessenger.of(context);
+                    try {
+                      final response = await authProvider.api.get(
+                        '/account/telegram_link',
+                      );
+                      if (response['deep_link'] != null) {
+                        final uri = Uri.parse(response['deep_link']);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri,
+                              mode: LaunchMode.externalApplication);
+                        }
+                      }
+                    } catch (e) {
+                      scaffoldMessenger.showSnackBar(
+                        const SnackBar(content: Text('Не удалось получить ссылку')),
+                      );
                     }
                   },
                   child: const Text('Привязать'),
@@ -346,7 +376,7 @@ class _ProfileTabState extends State<ProfileTab> {
               child: ListTile(
                 leading: const Icon(Icons.star_outline, color: Colors.amber),
                 title: const Text('Оценить приложение'),
-                subtitle: const Text('Поставьте оценку в App Store'),
+                subtitle: const Text('Поставьте оценку в Google Play'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => ReviewService.openStoreListing(),
               ),
@@ -491,49 +521,250 @@ class _ProfileTile extends StatelessWidget {
   }
 }
 
-class _ContactField extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
+class _ServicesSection extends StatefulWidget {
+  const _ServicesSection();
 
-  const _ContactField({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
+  @override
+  State<_ServicesSection> createState() => _ServicesSectionState();
+}
+
+class _ServicesSectionState extends State<_ServicesSection> {
+  List<Map<String, dynamic>>? _services;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    try {
+      final api = context.read<AuthProvider>().api;
+      final data = await api.get('/services/list');
+      if (mounted) {
+        setState(() {
+          _services = ((data['items'] as List?) ?? []).cast<Map<String, dynamic>>();
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Row(
+            children: [
+              Icon(Icons.widgets_outlined, size: 20, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Text('Подключённые услуги',
+                  style: Theme.of(context).textTheme.titleMedium),
+            ],
+          ),
+        ),
+        if (_loading)
+          const Center(child: Padding(
+            padding: EdgeInsets.all(16),
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ))
+        else if (_services == null || _services!.isEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: colorScheme.onSurfaceVariant, size: 20),
+                  const SizedBox(width: 12),
+                  Text('Нет подключённых услуг',
+                      style: TextStyle(color: colorScheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+          )
+        else
+          Card(
+            child: Column(
+              children: _services!.asMap().entries.map((entry) {
+                final i = entry.key;
+                final svc = entry.value;
+                final enabled = svc['enabled'] == true;
+                final name = svc['name'] ?? 'Услуга';
+                final price = svc['price'];
+                return Column(
+                  children: [
+                    ListTile(
+                      leading: Icon(
+                        enabled ? Icons.check_circle : Icons.cancel_outlined,
+                        color: enabled ? Colors.green : Colors.grey,
+                        size: 22,
+                      ),
+                      title: Text(name, style: const TextStyle(fontSize: 14)),
+                      subtitle: price != null
+                          ? Text('${double.tryParse(price.toString())?.toStringAsFixed(2) ?? price} \u20BD/мес',
+                              style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant))
+                          : null,
+                      trailing: Text(
+                        enabled ? 'Активна' : 'Отключена',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: enabled ? Colors.green : Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      dense: true,
+                    ),
+                    if (i < _services!.length - 1) const Divider(height: 1),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _EditableContactField extends StatefulWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final String fieldKey; // 'email' or 'sms'
+  final TextInputType keyboardType;
+  final String hintText;
+
+  const _EditableContactField({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.fieldKey,
+    required this.keyboardType,
+    required this.hintText,
+  });
+
+  @override
+  State<_EditableContactField> createState() => _EditableContactFieldState();
+}
+
+class _EditableContactFieldState extends State<_EditableContactField> {
+  final _controller = TextEditingController();
+  bool _editing = false;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() => _saving = true);
+    final account = context.read<AccountProvider>();
+    try {
+      await account.apiPost('/account/update_contacts', {widget.fieldKey: text});
+      if (mounted) {
+        setState(() { _editing = false; _saving = false; });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Сохранено')),
+        );
+        account.loadStatus(); // refresh
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isEmpty = widget.value.isEmpty;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
+          Text(widget.label, style: Theme.of(context).textTheme.labelMedium),
           const SizedBox(height: 4),
-          Container(
-            width: double.infinity,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              border: Border.all(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .outline
-                      .withOpacity(0.3)),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
+          if (_editing)
+            Row(
               children: [
-                Icon(icon,
-                    size: 18,
-                    color:
-                        Theme.of(context).colorScheme.onSurfaceVariant),
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    keyboardType: widget.keyboardType,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: widget.hintText,
+                      prefixIcon: Icon(widget.icon, size: 18),
+                      border: const OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      isDense: true,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Text(value),
+                IconButton.filled(
+                  onPressed: _saving ? null : _save,
+                  icon: _saving
+                      ? const SizedBox(width: 18, height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.check, size: 20),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _editing = false),
+                  icon: const Icon(Icons.close, size: 20),
+                ),
               ],
+            )
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                border: Border.all(color: colorScheme.outline.withOpacity(0.3)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(widget.icon, size: 18, color: colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isEmpty ? 'Не указан' : widget.value,
+                      style: TextStyle(
+                        color: isEmpty ? colorScheme.onSurfaceVariant : null,
+                      ),
+                    ),
+                  ),
+                  if (isEmpty)
+                    TextButton(
+                      onPressed: () => setState(() => _editing = true),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('Указать'),
+                    ),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );

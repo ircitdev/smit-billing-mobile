@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../providers/account_provider.dart';
 import '../widgets/balance_card.dart';
 import 'payment_screen.dart';
+import 'messages_screen.dart';
 
 class DashboardTab extends StatelessWidget {
   const DashboardTab({super.key});
@@ -77,7 +78,7 @@ class DashboardTab extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
 
-                      // Balance card with last payment
+                      // Balance card with status badge
                       BalanceCard(
                         balance: status.balance,
                         isBlocked: status.isBlocked,
@@ -93,19 +94,60 @@ class DashboardTab extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
 
-                      // Balance sparkline
-                      if (account.history.isNotEmpty) ...[
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                      // Tariff + Balance sparkline (combined card)
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Tariff header
+                              Row(
+                                children: [
+                                  Icon(Icons.speed, color: colorScheme.primary),
+                                  const SizedBox(width: 8),
+                                  Text('Тариф',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium),
+                                  const Spacer(),
+                                  if (status.speedMbit != null)
+                                    Chip(
+                                      label: Text('${status.speedMbit} Мбит/с'),
+                                      visualDensity: VisualDensity.compact,
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                status.tariffName ?? 'Не назначен',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              if (status.monthlyCost > 0) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${status.monthlyCost.toStringAsFixed(0)} \u20BD/мес',
+                                  style: TextStyle(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                              // Balance sparkline
+                              if (account.history.isNotEmpty) ...[
+                                const Divider(height: 24),
                                 Text('Динамика баланса',
                                     style: Theme.of(context)
                                         .textTheme
-                                        .titleSmall),
-                                const SizedBox(height: 12),
+                                        .labelMedium
+                                        ?.copyWith(
+                                            color:
+                                                colorScheme.onSurfaceVariant)),
+                                const SizedBox(height: 8),
                                 SizedBox(
                                   height: 80,
                                   child: _BalanceSparkline(
@@ -115,55 +157,13 @@ class DashboardTab extends StatelessWidget {
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-
-                      // Tariff info
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.speed,
-                                      color: colorScheme.primary),
-                                  const SizedBox(width: 8),
-                                  Text('Тариф',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                status.tariffName ?? 'Не назначен',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineSmall
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              if (status.speedMbit != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                    'Скорость: ${status.speedMbit} Мбит/с'),
-                              ],
-                              if (status.monthlyCost > 0) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                    'Стоимость: ${status.monthlyCost.toStringAsFixed(0)} \u20BD/мес'),
-                              ],
                             ],
                           ),
                         ),
                       ),
                       const SizedBox(height: 16),
 
-                      // Status & info
+                      // Info card (contract, address)
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
@@ -190,19 +190,10 @@ class DashboardTab extends StatelessWidget {
                               if (status.address.isNotEmpty)
                                 _InfoRow(
                                     label: 'Адрес', value: status.address),
-                              _InfoRow(
-                                label: 'Статус',
-                                value: status.isBlocked
-                                    ? 'Заблокирован'
-                                    : 'Активен',
-                                valueColor: status.isBlocked
-                                    ? Colors.red
-                                    : Colors.green,
-                              ),
                               if (status.isBlocked &&
                                   status.blockReason.isNotEmpty)
                                 _InfoRow(
-                                  label: 'Причина',
+                                  label: 'Причина блок.',
                                   value: status.blockReason,
                                   valueColor: Colors.red,
                                 ),
@@ -242,8 +233,160 @@ class DashboardTab extends StatelessWidget {
                           ),
                         ),
                       ],
+
+                      // Recent messages
+                      const SizedBox(height: 16),
+                      _RecentMessages(),
                     ],
                   ),
+      ),
+    );
+  }
+}
+
+/// Recent messages section on dashboard
+class _RecentMessages extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final account = context.watch<AccountProvider>();
+    final messages = account.messages;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (messages.isEmpty) return const SizedBox.shrink();
+
+    final recent = messages.take(3).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.notifications_outlined, color: colorScheme.primary, size: 20),
+            const SizedBox(width: 6),
+            Text('Сообщения',
+                style: Theme.of(context).textTheme.titleMedium),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...recent.map((msg) => _MessageTile(message: msg)),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MessagesScreen()),
+              );
+            },
+            child: const Text('Все сообщения'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Single message tile — truncated, tappable for full view
+class _MessageTile extends StatelessWidget {
+  final Map<String, dynamic> message;
+
+  const _MessageTile({required this.message});
+
+  String _formatDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(dateStr);
+      return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final text = (message['text'] as String?) ?? '';
+    final subject = (message['title'] as String?) ?? '';
+    final date = _formatDate(message['date'] as String?);
+    final isLong = text.length > 120;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: InkWell(
+        onTap: isLong
+            ? () => _showFullMessage(context, subject, text, date)
+            : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.mail_outline, size: 16, color: colorScheme.primary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      subject.isNotEmpty ? subject : 'Сообщение',
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(date,
+                      style: TextStyle(
+                          fontSize: 11, color: colorScheme.onSurfaceVariant)),
+                ],
+              ),
+              if (text.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant),
+                ),
+              ],
+              if (isLong) ...[
+                const SizedBox(height: 4),
+                Text('Нажмите, чтобы прочитать полностью...',
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: colorScheme.primary,
+                        fontStyle: FontStyle.italic)),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFullMessage(
+      BuildContext context, String subject, String text, String date) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(subject.isNotEmpty ? subject : 'Сообщение')),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (date.isNotEmpty)
+                  Text(date,
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 13)),
+                if (date.isNotEmpty) const SizedBox(height: 12),
+                Text(text, style: const TextStyle(fontSize: 15, height: 1.5)),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

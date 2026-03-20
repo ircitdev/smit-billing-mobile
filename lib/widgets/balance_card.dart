@@ -26,28 +26,64 @@ class BalanceCard extends StatelessWidget {
 
     return Card(
       elevation: 4,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(
-            colors: [
-              colorScheme.primaryContainer,
-              colorScheme.primary.withOpacity(0.1),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+          image: const DecorationImage(
+            image: AssetImage('assets/bg.png'),
+            fit: BoxFit.cover,
           ),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Баланс',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: colorScheme.onPrimaryContainer,
+            // Top row: "Баланс" + status badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Баланс',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isBlocked
+                        ? Colors.red.withOpacity(0.15)
+                        : Colors.green.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isBlocked ? Colors.red.shade300 : Colors.green.shade300,
+                      width: 0.5,
+                    ),
                   ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isBlocked ? Icons.block : Icons.check_circle,
+                        size: 14,
+                        color: isBlocked ? Colors.red : Colors.green,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isBlocked ? 'Заблокирован' : 'Активен',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isBlocked ? Colors.red : Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             Text(

@@ -51,6 +51,38 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     }
   }
 
+  Future<void> _closeTicket() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Закрыть обращение?'),
+        content: const Text('Вы уверены, что хотите закрыть это обращение?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Закрыть')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final account = context.read<AccountProvider>();
+    try {
+      await account.apiPost('/support/tickets/${widget.ticketId}', {'action': 'close'});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Обращение закрыто')),
+        );
+        setState(() => _status = 'closed');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _sendReply() async {
     final text = _replyCtrl.text.trim();
     if (text.isEmpty) return;
@@ -80,23 +112,21 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       appBar: AppBar(
         title: Text('#${widget.ticketId}'),
         actions: [
-          if (_status.isNotEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Chip(
-                  label: Text(
-                    _status == 'active' ? 'Активный' : 'Закрыт',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: _status == 'active'
-                          ? Colors.green
-                          : Colors.grey,
-                    ),
-                  ),
-                  padding: EdgeInsets.zero,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+          if (_status == 'active' || _status == 'pending')
+            TextButton.icon(
+              onPressed: _closeTicket,
+              icon: const Icon(Icons.check_circle_outline, size: 18),
+              label: const Text('Закрыть'),
+              style: TextButton.styleFrom(foregroundColor: Colors.green),
+            )
+          else if (_status.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Chip(
+                label: const Text('Закрыт',
+                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                padding: EdgeInsets.zero,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
         ],

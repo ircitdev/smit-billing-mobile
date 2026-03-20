@@ -192,7 +192,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         ),
                       )
                     : const Icon(Icons.payment),
-                label: const Text('Оплатить через ЮKassa'),
+                label: Text('Оплатить через ${status?.paymentSystemLabel ?? 'платёжную систему'}'),
               ),
             ),
             const SizedBox(height: 16),
@@ -202,7 +202,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     size: 14, color: colorScheme.onSurfaceVariant),
                 const SizedBox(width: 4),
                 Text(
-                  'Безопасная оплата через ЮKassa',
+                  'Безопасная оплата через ${status?.paymentSystemLabel ?? 'платёжную систему'}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),

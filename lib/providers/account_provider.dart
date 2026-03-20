@@ -10,6 +10,7 @@ class AccountProvider extends ChangeNotifier {
   AccountStatus? _status;
   List<Tariff> _tariffs = [];
   List<FinanceOperation> _history = [];
+  List<Map<String, dynamic>> _messages = [];
   int _historyTotal = 0;
   bool _isLoading = false;
   String? _error;
@@ -17,6 +18,7 @@ class AccountProvider extends ChangeNotifier {
   AccountStatus? get status => _status;
   List<Tariff> get tariffs => _tariffs;
   List<FinanceOperation> get history => _history;
+  List<Map<String, dynamic>> get messages => _messages;
   int get historyTotal => _historyTotal;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -38,6 +40,8 @@ class AccountProvider extends ChangeNotifier {
     try {
       final data = await _api!.get('/account/status');
       _status = AccountStatus.fromJson(data);
+      // Load messages in parallel
+      _loadMessages();
     } on ApiException catch (e) {
       _error = e.message;
     } catch (e) {
@@ -45,6 +49,15 @@ class AccountProvider extends ChangeNotifier {
     }
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<void> _loadMessages() async {
+    if (_api == null) return;
+    try {
+      final data = await _api!.get('/account/messages');
+      _messages = ((data['items'] as List?) ?? []).cast<Map<String, dynamic>>();
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> loadTariffs() async {

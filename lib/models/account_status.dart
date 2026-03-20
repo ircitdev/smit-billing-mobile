@@ -17,6 +17,8 @@ class AccountStatus {
   final String sms;
   final String notification;
   final Map<String, dynamic>? lastPayment;
+  final String? paymentSystemName;
+  final String? paymentSystemLabel;
 
   AccountStatus({
     required this.abonentId,
@@ -37,6 +39,8 @@ class AccountStatus {
     required this.sms,
     required this.notification,
     this.lastPayment,
+    this.paymentSystemName,
+    this.paymentSystemLabel,
   });
 
   factory AccountStatus.fromJson(Map<String, dynamic> json) {
@@ -59,6 +63,8 @@ class AccountStatus {
       sms: json['sms'] ?? '',
       notification: json['notification'] ?? '',
       lastPayment: json['last_payment'],
+      paymentSystemName: json['payment_system']?['name'],
+      paymentSystemLabel: json['payment_system']?['label'],
     );
   }
 }
