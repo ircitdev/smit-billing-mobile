@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_client.dart';
 import 'ticket_detail_screen.dart';
+import 'chat_screen.dart';
 
 class SupportTab extends StatefulWidget {
   const SupportTab({super.key});
@@ -163,10 +164,26 @@ class _SupportTabState extends State<SupportTab>
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _createTicket,
-        icon: const Icon(Icons.add),
-        label: const Text('Новое обращение'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'chat',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ChatScreen()),
+            ),
+            icon: const Icon(Icons.smart_toy),
+            label: const Text('AI-ассистент'),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: 'ticket',
+            onPressed: _createTicket,
+            icon: const Icon(Icons.add),
+            label: const Text('Новое обращение'),
+          ),
+        ],
       ),
       body: TabBarView(
         controller: _tabCtrl,
