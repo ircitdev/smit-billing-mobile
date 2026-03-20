@@ -346,7 +346,7 @@ class _ProfileTabState extends State<ProfileTab> {
               child: ListTile(
                 leading: const Icon(Icons.star_outline, color: Colors.amber),
                 title: const Text('Оценить приложение'),
-                subtitle: const Text('Поставьте оценку в Google Play'),
+                subtitle: const Text('Поставьте оценку в App Store'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => ReviewService.openStoreListing(),
               ),
