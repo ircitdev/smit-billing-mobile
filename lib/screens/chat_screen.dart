@@ -195,7 +195,14 @@ class _ChatScreenState extends State<ChatScreen> {
           // Messages
           Expanded(
             child: Container(
-              color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFEFF6F0),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFEFF6F0),
+                image: isDark ? null : const DecorationImage(
+                  image: NetworkImage('https://storage.googleapis.com/uspeshnyy-projects/smit/billing/app/pattern.jpg'),
+                  repeat: ImageRepeat.repeat,
+                  opacity: 0.12,
+                ),
+              ),
               child: ListView.builder(
                 controller: _scrollController,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

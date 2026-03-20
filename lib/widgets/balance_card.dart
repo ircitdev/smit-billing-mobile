@@ -1,4 +1,12 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+
+const _bgUrls = [
+  'https://storage.googleapis.com/uspeshnyy-projects/smit/billing/app/bg.png',
+  'https://storage.googleapis.com/uspeshnyy-projects/smit/billing/app/bg2.png',
+  'https://storage.googleapis.com/uspeshnyy-projects/smit/billing/app/bg3.png',
+  'https://storage.googleapis.com/uspeshnyy-projects/smit/billing/app/bg4.png',
+];
 
 class BalanceCard extends StatelessWidget {
   final double balance;
@@ -32,8 +40,8 @@ class BalanceCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          image: const DecorationImage(
-            image: AssetImage('assets/bg.png'),
+          image: DecorationImage(
+            image: NetworkImage(_bgUrls[balance.hashCode.abs() % _bgUrls.length]),
             fit: BoxFit.cover,
           ),
           borderRadius: BorderRadius.circular(12),
