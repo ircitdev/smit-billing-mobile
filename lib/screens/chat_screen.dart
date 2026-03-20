@@ -19,67 +19,37 @@ class _ChatScreenState extends State<ChatScreen> {
   String? _sessionId;
   bool _sending = false;
   bool _escalated = false;
-  bool _loading = true;
 
-  static const _keySessionId = 'aida_session_id';
-  static const _keySessionTime = 'aida_session_time';
-  static const _sessionTtlHours = 24;
+  static const _sessionKey = 'chat_session_id';
+  static const _sessionExpiresKey = 'chat_session_expires';
 
   @override
   void initState() {
     super.initState();
     _loadSession();
+    _messages.add(_ChatMsg(
+      text: 'Здравствуйте! Я AI-ассистент СМИТ. 😊\nЧем могу помочь?',
+      isUser: false,
+      time: DateTime.now(),
+    ));
   }
 
   Future<void> _loadSession() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedId = prefs.getString(_keySessionId);
-    final savedTime = prefs.getInt(_keySessionTime) ?? 0;
-    final age = DateTime.now().millisecondsSinceEpoch - savedTime;
-    final expired = age > _sessionTtlHours * 3600 * 1000;
-
-    if (savedId != null && !expired) {
-      _sessionId = savedId;
-      // Try to load history from server
-      final api = Provider.of<AuthProvider>(context, listen: false).api;
-      try {
-        final data = await api.get('/chat/history?session_id=$savedId');
-        final messages = data['messages'] as List? ?? [];
-        for (final m in messages) {
-          _messages.add(_ChatMsg(
-            text: m['text'] ?? '',
-            isUser: m['is_user'] == true,
-            time: DateTime.tryParse(m['time'] ?? '') ?? DateTime.now(),
-          ));
-        }
-        if (data['escalated'] == true) _escalated = true;
-      } catch (_) {
-        // Server doesn't support history yet — start fresh
-      }
+    final expires = prefs.getInt(_sessionExpiresKey) ?? 0;
+    if (DateTime.now().millisecondsSinceEpoch < expires) {
+      _sessionId = prefs.getString(_sessionKey);
+    } else {
+      await prefs.remove(_sessionKey);
+      await prefs.remove(_sessionExpiresKey);
     }
-
-    // If no history loaded, show welcome message
-    if (_messages.isEmpty) {
-      _sessionId = null;
-      prefs.remove(_keySessionId);
-      _messages.add(_ChatMsg(
-        text: 'Здравствуйте! Я AIDA — AI-ассистент СМИТ.\n'
-            'Задайте вопрос о тарифах, балансе, услугах или опишите проблему.\n'
-            'Если я не смогу помочь — передам вопрос оператору.',
-        isUser: false,
-        time: DateTime.now(),
-      ));
-    }
-
-    setState(() => _loading = false);
-    _scrollToBottom();
   }
 
-  Future<void> _saveSession() async {
-    if (_sessionId == null) return;
+  Future<void> _saveSession(String id) async {
     final prefs = await SharedPreferences.getInstance();
-    prefs.setString(_keySessionId, _sessionId!);
-    prefs.setInt(_keySessionTime, DateTime.now().millisecondsSinceEpoch);
+    await prefs.setString(_sessionKey, id);
+    await prefs.setInt(_sessionExpiresKey,
+        DateTime.now().add(const Duration(hours: 24)).millisecondsSinceEpoch);
   }
 
   @override
@@ -109,35 +79,21 @@ class _ChatScreenState extends State<ChatScreen> {
       });
 
       _sessionId = data['session_id'] ?? _sessionId;
-      _saveSession();
+      if (_sessionId != null) _saveSession(_sessionId!);
       final response = data['response'] ?? 'Нет ответа';
       final escalated = data['escalated'] == true;
 
       setState(() {
-        _messages.add(_ChatMsg(
-          text: response,
-          isUser: false,
-          time: DateTime.now(),
-        ));
+        _messages.add(_ChatMsg(text: response, isUser: false, time: DateTime.now()));
         if (escalated) _escalated = true;
       });
     } on ApiException catch (e) {
       setState(() {
-        _messages.add(_ChatMsg(
-          text: 'Ошибка: ${e.message}',
-          isUser: false,
-          time: DateTime.now(),
-          isError: true,
-        ));
+        _messages.add(_ChatMsg(text: 'Ошибка: ${e.message}', isUser: false, time: DateTime.now(), isError: true));
       });
     } catch (_) {
       setState(() {
-        _messages.add(_ChatMsg(
-          text: 'Не удалось связаться с ассистентом. Попробуйте позже.',
-          isUser: false,
-          time: DateTime.now(),
-          isError: true,
-        ));
+        _messages.add(_ChatMsg(text: 'Не удалось связаться с ассистентом.', isUser: false, time: DateTime.now(), isError: true));
       });
     } finally {
       setState(() => _sending = false);
@@ -149,31 +105,21 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Опишите проблему перед отправкой оператору')),
+        const SnackBar(content: Text('Опишите проблему')),
       );
       return;
     }
-
     setState(() => _sending = true);
     final api = Provider.of<AuthProvider>(context, listen: false).api;
     try {
-      await api.post('/chat/escalate', {
-        'message': text,
-        'session_id': _sessionId ?? '',
-      });
+      await api.post('/chat/escalate', {'message': text, 'session_id': _sessionId ?? ''});
       _controller.clear();
       setState(() {
         _escalated = true;
-        _messages.add(_ChatMsg(
-          text: 'Ваш вопрос передан оператору. Ответ придёт в раздел «Поддержка».',
-          isUser: false,
-          time: DateTime.now(),
-        ));
+        _messages.add(_ChatMsg(text: 'Вопрос передан оператору. Ответ придёт в «Поддержку».', isUser: false, time: DateTime.now()));
       });
     } on ApiException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } finally {
       setState(() => _sending = false);
       _scrollToBottom();
@@ -192,44 +138,83 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  // Simple markdown formatting
+  List<InlineSpan> _parseMd(String text, Color color) {
+    final spans = <InlineSpan>[];
+    final pattern = RegExp(r'\*\*(.+?)\*\*');
+    int last = 0;
+    for (final m in pattern.allMatches(text)) {
+      if (m.start > last) {
+        spans.add(TextSpan(text: text.substring(last, m.start), style: TextStyle(color: color, fontSize: 14.5)));
+      }
+      spans.add(TextSpan(text: m.group(1), style: TextStyle(color: color, fontSize: 14.5, fontWeight: FontWeight.w700)));
+      last = m.end;
+    }
+    if (last < text.length) {
+      spans.add(TextSpan(text: text.substring(last), style: TextStyle(color: color, fontSize: 14.5)));
+    }
+    return spans;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final primary = theme.colorScheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    const green = Color(0xFF5BA89D);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI-ассистент'),
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: green.withOpacity(0.15),
+              child: const Icon(Icons.smart_toy, size: 20, color: green),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('AI-ассистент', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text('онлайн', style: TextStyle(fontSize: 12, color: Colors.green.shade400)),
+              ],
+            ),
+          ],
+        ),
         actions: [
           if (!_escalated)
             IconButton(
               icon: const Icon(Icons.support_agent),
-              tooltip: 'Передать оператору',
+              tooltip: 'Оператор',
               onPressed: _escalateManually,
             ),
         ],
       ),
-      body: _loading
-        ? const Center(child: CircularProgressIndicator())
-        : Column(
+      body: Column(
         children: [
           // Messages
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              itemCount: _messages.length + (_sending ? 1 : 0),
-              itemBuilder: (ctx, i) {
-                if (i == _messages.length) {
-                  // Typing indicator
-                  return _buildTypingIndicator(isDark);
-                }
-                return _buildBubble(_messages[i], primary, isDark);
-              },
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1A1A1A) : null,
+                image: isDark ? null : const DecorationImage(
+                  image: NetworkImage('https://aida.smit34.ru/widget/pattern.jpg'),
+                  repeat: ImageRepeat.repeat,
+                  opacity: 0.15,
+                ),
+              ),
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                itemCount: _messages.length + (_sending ? 1 : 0),
+                itemBuilder: (ctx, i) {
+                  if (i == _messages.length) return _buildTyping(isDark);
+                  return _buildBubble(_messages[i], isDark);
+                },
+              ),
             ),
           ),
-          // Escalated banner
+          // Escalated
           if (_escalated)
             Container(
               color: Colors.green.shade50,
@@ -238,20 +223,15 @@ class _ChatScreenState extends State<ChatScreen> {
                 children: [
                   Icon(Icons.check_circle, color: Colors.green.shade700, size: 18),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Вопрос передан оператору',
-                      style: TextStyle(color: Colors.green.shade800, fontSize: 13),
-                    ),
-                  ),
+                  Expanded(child: Text('Вопрос передан оператору', style: TextStyle(color: Colors.green.shade800, fontSize: 13))),
                 ],
               ),
             ),
           // Input
           Container(
             decoration: BoxDecoration(
-              color: isDark ? Colors.grey.shade900 : Colors.white,
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+              color: isDark ? const Color(0xFF22262E) : Colors.white,
+              border: Border(top: BorderSide(color: isDark ? const Color(0xFF353940) : Colors.grey.shade200)),
             ),
             padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
             child: SafeArea(
@@ -265,13 +245,13 @@ class _ChatScreenState extends State<ChatScreen> {
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _send(),
                       decoration: InputDecoration(
-                        hintText: 'Задайте вопрос...',
+                        hintText: 'Сообщение',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(22),
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
-                        fillColor: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
+                        fillColor: isDark ? const Color(0xFF2A2E37) : Colors.grey.shade100,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         isDense: true,
                       ),
@@ -279,18 +259,14 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   const SizedBox(width: 8),
                   Material(
-                    color: primary,
+                    color: green,
                     shape: const CircleBorder(),
                     child: InkWell(
                       onTap: _sending ? null : _send,
                       customBorder: const CircleBorder(),
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Icon(
-                          Icons.send_rounded,
-                          color: Colors.white,
-                          size: 22,
-                        ),
+                      child: const Padding(
+                        padding: EdgeInsets.all(10),
+                        child: Icon(Icons.arrow_upward, color: Colors.white, size: 22),
                       ),
                     ),
                   ),
@@ -303,70 +279,47 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildBubble(_ChatMsg msg, Color primary, bool isDark) {
+  Widget _buildBubble(_ChatMsg msg, bool isDark) {
     final isUser = msg.isUser;
     final bgColor = msg.isError
         ? Colors.red.shade50
         : isUser
-            ? primary.withOpacity(0.85)
-            : (isDark ? Colors.grey.shade800 : Colors.grey.shade100);
+            ? const Color(0xFF5BA89D)
+            : (isDark ? const Color(0xFF2A2E37) : const Color(0xFFE8E8ED));
     final textColor = msg.isError
         ? Colors.red.shade900
         : isUser
             ? Colors.white
-            : (isDark ? Colors.white : Colors.black87);
+            : (isDark ? const Color(0xFFD0D3D8) : const Color(0xFF1A1A1A));
+    final timeStr = '${msg.time.hour.toString().padLeft(2, '0')}:${msg.time.minute.toString().padLeft(2, '0')}';
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
-        ),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
         margin: EdgeInsets.only(
-          top: 4,
-          bottom: 4,
+          top: 2, bottom: 2,
           left: isUser ? 48 : 0,
           right: isUser ? 0 : 48,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: Radius.circular(isUser ? 18 : 4),
+            bottomRight: Radius.circular(isUser ? 4 : 18),
+          ),
+        ),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (!isUser) ...[
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: primary.withOpacity(0.15),
-                child: Icon(Icons.smart_toy, size: 18, color: primary),
-              ),
-              const SizedBox(width: 8),
-            ],
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(16),
-                    topRight: const Radius.circular(16),
-                    bottomLeft: Radius.circular(isUser ? 16 : 4),
-                    bottomRight: Radius.circular(isUser ? 4 : 16),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(msg.text, style: TextStyle(color: textColor, fontSize: 14.5)),
-                    const SizedBox(height: 3),
-                    Text(
-                      '${msg.time.hour.toString().padLeft(2, '0')}:${msg.time.minute.toString().padLeft(2, '0')}',
-                      style: TextStyle(
-                        color: textColor.withOpacity(0.5),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            RichText(text: TextSpan(children: _parseMd(msg.text, textColor))),
+            const SizedBox(height: 3),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: Text(timeStr, style: TextStyle(color: textColor.withOpacity(0.45), fontSize: 10.5)),
             ),
           ],
         ),
@@ -374,36 +327,22 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildTypingIndicator(bool isDark) {
+  Widget _buildTyping(bool isDark) {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(top: 4, bottom: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.15),
-              child: Icon(Icons.smart_toy, size: 18,
-                  color: Theme.of(context).colorScheme.primary),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                  bottomLeft: Radius.circular(4),
-                ),
-              ),
-              child: const _TypingDots(),
-            ),
-          ],
+        margin: const EdgeInsets.only(top: 2, bottom: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF2A2E37) : const Color(0xFFE8E8ED),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomRight: Radius.circular(18),
+            bottomLeft: Radius.circular(4),
+          ),
         ),
+        child: const _TypingDots(),
       ),
     );
   }
@@ -414,40 +353,26 @@ class _ChatMsg {
   final bool isUser;
   final DateTime time;
   final bool isError;
-
-  _ChatMsg({
-    required this.text,
-    required this.isUser,
-    required this.time,
-    this.isError = false,
-  });
+  _ChatMsg({required this.text, required this.isUser, required this.time, this.isError = false});
 }
 
 class _TypingDots extends StatefulWidget {
   const _TypingDots();
-
   @override
   State<_TypingDots> createState() => _TypingDotsState();
 }
 
-class _TypingDotsState extends State<_TypingDots>
-    with SingleTickerProviderStateMixin {
+class _TypingDotsState extends State<_TypingDots> with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
   }
 
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -461,13 +386,9 @@ class _TypingDotsState extends State<_TypingDots>
           return Transform.translate(
             offset: Offset(0, -y.abs()),
             child: Container(
-              width: 7,
-              height: 7,
+              width: 7, height: 7,
               margin: const EdgeInsets.symmetric(horizontal: 2),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade500,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: Colors.grey.shade500, shape: BoxShape.circle),
             ),
           );
         }),
