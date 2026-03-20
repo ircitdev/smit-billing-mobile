@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_client.dart';
 
@@ -18,18 +19,67 @@ class _ChatScreenState extends State<ChatScreen> {
   String? _sessionId;
   bool _sending = false;
   bool _escalated = false;
+  bool _loading = true;
+
+  static const _keySessionId = 'aida_session_id';
+  static const _keySessionTime = 'aida_session_time';
+  static const _sessionTtlHours = 24;
 
   @override
   void initState() {
     super.initState();
-    // Welcome message from AIDA
-    _messages.add(_ChatMsg(
-      text: 'Здравствуйте! Я AIDA — AI-ассистент СМИТ.\n'
-          'Задайте вопрос о тарифах, балансе, услугах или опишите проблему.\n'
-          'Если я не смогу помочь — передам вопрос оператору.',
-      isUser: false,
-      time: DateTime.now(),
-    ));
+    _loadSession();
+  }
+
+  Future<void> _loadSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedId = prefs.getString(_keySessionId);
+    final savedTime = prefs.getInt(_keySessionTime) ?? 0;
+    final age = DateTime.now().millisecondsSinceEpoch - savedTime;
+    final expired = age > _sessionTtlHours * 3600 * 1000;
+
+    if (savedId != null && !expired) {
+      _sessionId = savedId;
+      // Try to load history from server
+      final api = Provider.of<AuthProvider>(context, listen: false).api;
+      try {
+        final data = await api.get('/chat/history?session_id=$savedId');
+        final messages = data['messages'] as List? ?? [];
+        for (final m in messages) {
+          _messages.add(_ChatMsg(
+            text: m['text'] ?? '',
+            isUser: m['is_user'] == true,
+            time: DateTime.tryParse(m['time'] ?? '') ?? DateTime.now(),
+          ));
+        }
+        if (data['escalated'] == true) _escalated = true;
+      } catch (_) {
+        // Server doesn't support history yet — start fresh
+      }
+    }
+
+    // If no history loaded, show welcome message
+    if (_messages.isEmpty) {
+      _sessionId = null;
+      prefs.remove(_keySessionId);
+      _messages.add(_ChatMsg(
+        text: 'Здравствуйте! Я AIDA — AI-ассистент СМИТ.\n'
+            'Задайте вопрос о тарифах, балансе, услугах или опишите проблему.\n'
+            'Если я не смогу помочь — передам вопрос оператору.',
+        isUser: false,
+        time: DateTime.now(),
+      ));
+    }
+
+    setState(() => _loading = false);
+    _scrollToBottom();
+  }
+
+  Future<void> _saveSession() async {
+    if (_sessionId == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString(_keySessionId, _sessionId!);
+    prefs.setInt(_keySessionTime, DateTime.now().millisecondsSinceEpoch);
   }
 
   @override
@@ -59,6 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
       });
 
       _sessionId = data['session_id'] ?? _sessionId;
+      _saveSession();
       final response = data['response'] ?? 'Нет ответа';
       final escalated = data['escalated'] == true;
 
@@ -159,7 +210,9 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
         ],
       ),
-      body: Column(
+      body: _loading
+        ? const Center(child: CircularProgressIndicator())
+        : Column(
         children: [
           // Messages
           Expanded(
