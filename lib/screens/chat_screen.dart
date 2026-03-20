@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -22,27 +23,48 @@ class _ChatScreenState extends State<ChatScreen> {
 
   static const _sessionKey = 'chat_session_id';
   static const _sessionExpiresKey = 'chat_session_expires';
+  static const _historyKey = 'chat_history';
+  bool _ready = false;
 
   @override
   void initState() {
     super.initState();
-    _loadSession();
-    _messages.add(_ChatMsg(
-      text: 'Здравствуйте! Я AI-ассистент СМИТ. 😊\nЧем могу помочь?',
-      isUser: false,
-      time: DateTime.now(),
-    ));
+    _init();
   }
 
-  Future<void> _loadSession() async {
+  Future<void> _init() async {
     final prefs = await SharedPreferences.getInstance();
     final expires = prefs.getInt(_sessionExpiresKey) ?? 0;
     if (DateTime.now().millisecondsSinceEpoch < expires) {
       _sessionId = prefs.getString(_sessionKey);
+      // Restore message history
+      final historyJson = prefs.getString(_historyKey);
+      if (historyJson != null) {
+        try {
+          final list = (json.decode(historyJson) as List);
+          for (final m in list) {
+            _messages.add(_ChatMsg(
+              text: m['text'] ?? '',
+              isUser: m['isUser'] == true,
+              time: DateTime.tryParse(m['time'] ?? '') ?? DateTime.now(),
+            ));
+          }
+        } catch (_) {}
+      }
     } else {
       await prefs.remove(_sessionKey);
       await prefs.remove(_sessionExpiresKey);
+      await prefs.remove(_historyKey);
     }
+    if (_messages.isEmpty) {
+      _messages.add(_ChatMsg(
+        text: 'Здравствуйте! Я AI-ассистент СМИТ. 😊\nЧем могу помочь?',
+        isUser: false,
+        time: DateTime.now(),
+      ));
+    }
+    if (mounted) setState(() => _ready = true);
+    _scrollToBottom();
   }
 
   Future<void> _saveSession(String id) async {
@@ -50,6 +72,14 @@ class _ChatScreenState extends State<ChatScreen> {
     await prefs.setString(_sessionKey, id);
     await prefs.setInt(_sessionExpiresKey,
         DateTime.now().add(const Duration(hours: 24)).millisecondsSinceEpoch);
+  }
+
+  Future<void> _saveHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = _messages.map((m) => {
+      'text': m.text, 'isUser': m.isUser, 'time': m.time.toIso8601String(),
+    }).toList();
+    await prefs.setString(_historyKey, json.encode(list));
   }
 
   @override
@@ -61,7 +91,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _send() async {
     final text = _controller.text.trim();
-    if (text.isEmpty || _sending) return;
+    if (text.isEmpty || _sending || !_ready) return;
 
     setState(() {
       _messages.add(_ChatMsg(text: text, isUser: true, time: DateTime.now()));
@@ -87,6 +117,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _messages.add(_ChatMsg(text: response, isUser: false, time: DateTime.now()));
         if (escalated) _escalated = true;
       });
+      _saveHistory();
     } on ApiException catch (e) {
       setState(() {
         _messages.add(_ChatMsg(text: 'Ошибка: ${e.message}', isUser: false, time: DateTime.now(), isError: true));
@@ -200,7 +231,6 @@ class _ChatScreenState extends State<ChatScreen> {
                 image: isDark ? null : const DecorationImage(
                   image: NetworkImage('https://storage.googleapis.com/uspeshnyy-projects/smit/billing/app/pattern.jpg'),
                   repeat: ImageRepeat.repeat,
-                  opacity: 0.12,
                 ),
               ),
               child: ListView.builder(
