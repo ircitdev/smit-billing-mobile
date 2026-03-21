@@ -62,7 +62,7 @@ class ReviewService {
   /// Open store listing directly (for "Rate app" button in profile).
   static Future<void> openStoreListing() async {
     await _inAppReview.openStoreListing(
-      appStoreId: '', // iOS App Store ID (when published)
+      appStoreId: '6760686353',
     );
   }
 }
