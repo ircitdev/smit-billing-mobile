@@ -7,7 +7,7 @@ import '../providers/theme_provider.dart';
 import '../services/review_service.dart';
 import 'messages_screen.dart';
 import 'change_password_screen.dart';
-import 'snake_game.dart';
+import 'pacman_game.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
@@ -39,7 +39,7 @@ class _ProfileTabState extends State<ProfileTab> {
     if (_avatarTapCount >= 6) {
       _avatarTapCount = 0;
       Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const SnakeGame()));
+          MaterialPageRoute(builder: (_) => const PacmanGame()));
     }
   }
 
@@ -376,7 +376,7 @@ class _ProfileTabState extends State<ProfileTab> {
               child: ListTile(
                 leading: const Icon(Icons.star_outline, color: Colors.amber),
                 title: const Text('Оценить приложение'),
-                subtitle: const Text('Поставьте оценку в App Store'),
+                subtitle: const Text('Поставьте оценку в Google Play'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => ReviewService.openStoreListing(),
               ),

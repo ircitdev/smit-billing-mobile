@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../providers/account_provider.dart';
+import 'webview_payment_screen.dart';
 
 class PaymentScreen extends StatefulWidget {
   const PaymentScreen({super.key});
@@ -43,31 +43,41 @@ class _PaymentScreenState extends State<PaymentScreen> {
       return;
     }
 
+    // Open payment in WebView
     String? url;
+    String? formAction;
+    Map<String, String>? formFields;
+
     if (result['redirect_url'] != null) {
-      // REST API v3 — direct redirect
       url = result['redirect_url'];
     } else if (result['form_post'] == true) {
-      // HTTP protocol — build GET URL with params for url_launcher
-      final action = result['action'] as String? ?? '';
+      formAction = result['action'] as String? ?? '';
       final fields = result['fields'] as Map<String, dynamic>? ?? {};
-      final params = fields.entries
-          .where((e) => e.value != null && e.value.toString().isNotEmpty)
-          .map((e) =>
-              '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value.toString())}')
-          .join('&');
-      url = '$action?$params';
+      formFields = fields.map((k, v) => MapEntry(k, v?.toString() ?? ''));
     }
 
-    if (url != null) {
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        // Refresh balance when user comes back
-        if (mounted) {
-          Future.delayed(const Duration(seconds: 3), () {
-            if (mounted) account.loadStatus();
-          });
+    if (url != null || formAction != null) {
+      if (!mounted) return;
+      final success = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => WebViewPaymentScreen(
+            url: url,
+            formAction: formAction,
+            formFields: formFields,
+          ),
+        ),
+      );
+      // Refresh balance after returning from payment
+      if (mounted) {
+        account.loadStatus();
+        if (success == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Баланс обновляется...'),
+              duration: Duration(seconds: 2),
+            ),
+          );
         }
       }
     }
