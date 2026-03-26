@@ -211,7 +211,7 @@ class ProfileTab extends StatelessWidget {
                 trailing: OutlinedButton(
                   onPressed: () async {
                     final uri = Uri.parse(
-                        'https://demo.billing.smit34.ru/lk/oauth/vk/');
+                        'https://testbill.smit34.ru/lk/oauth/vk/');
                     if (await canLaunchUrl(uri)) {
                       await launchUrl(uri,
                           mode: LaunchMode.externalApplication);

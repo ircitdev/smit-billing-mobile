@@ -47,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _loginVk() async {
-    final uri = Uri.parse('https://demo.billing.smit34.ru/lk/oauth/vk/');
+    final uri = Uri.parse('https://testbill.smit34.ru/lk/oauth/vk/');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
