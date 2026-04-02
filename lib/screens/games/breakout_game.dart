@@ -334,8 +334,8 @@ class _BreakoutPainter extends CustomPainter {
   static const double brickOffX = _BreakoutGameState.brickOffX;
   static const double brickOffY = _BreakoutGameState.brickOffY;
   static const double brickGap = _BreakoutGameState.brickGap;
-  static const double brickCols = _BreakoutGameState.brickCols;
-  static const double brickRows = _BreakoutGameState.brickRows;
+  static const int brickCols = _BreakoutGameState.brickCols;
+  static const int brickRows = _BreakoutGameState.brickRows;
   static const double paddleW = _BreakoutGameState.paddleW;
   static const double paddleH = _BreakoutGameState.paddleH;
   static const double ballR = _BreakoutGameState.ballR;

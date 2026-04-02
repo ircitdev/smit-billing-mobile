@@ -6,6 +6,15 @@ import '../widgets/balance_card.dart';
 import 'payment_screen.dart';
 import 'messages_screen.dart';
 
+String _fmtDate(String dateStr) {
+  try {
+    final dt = DateTime.parse(dateStr);
+    return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}';
+  } catch (_) {
+    return dateStr;
+  }
+}
+
 class DashboardTab extends StatelessWidget {
   const DashboardTab({super.key});
 
@@ -17,7 +26,7 @@ class DashboardTab extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SmIT34'),
+        title: const Text('СмИТ Биллинг'),
       ),
       body: RefreshIndicator(
         onRefresh: () => account.loadStatus(),
@@ -59,6 +68,52 @@ class DashboardTab extends StatelessWidget {
                                         .textTheme
                                         .bodySmall
                                         ?.copyWith(color: Colors.brown),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // Promise pay banner
+                      if (status.hasPromisePay && status.promisePayEnd != null) ...[
+                        Card(
+                          color: Colors.lightBlue.shade50,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                Icon(Icons.handshake_outlined,
+                                    color: Colors.blue.shade600, size: 22),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Обещанный платёж активен',
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.blue.shade800,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'до ${_fmtDate(status.promisePayEnd!)}${status.promisePayAmount != null ? " (лимит: ${status.promisePayAmount!.toStringAsFixed(0)} ₽)" : ""}',
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: Colors.blue.shade600,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Пополните баланс до окончания срока',
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],

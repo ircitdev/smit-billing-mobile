@@ -11,6 +11,7 @@ class AccountStatus {
   final String blockReason;
   final bool hasPromisePay;
   final String? promisePayEnd;
+  final double? promisePayAmount;
   final String? balanceUntilDate;
   final String address;
   final String email;
@@ -33,6 +34,7 @@ class AccountStatus {
     required this.blockReason,
     required this.hasPromisePay,
     this.promisePayEnd,
+    this.promisePayAmount,
     this.balanceUntilDate,
     required this.address,
     required this.email,
@@ -57,6 +59,7 @@ class AccountStatus {
       blockReason: json['block_reason'] ?? '',
       hasPromisePay: json['has_promise_pay'] ?? false,
       promisePayEnd: json['promise_pay_end'],
+      promisePayAmount: double.tryParse(json['promise_pay_amount']?.toString() ?? ''),
       balanceUntilDate: json['balance_until_date'],
       address: json['address'] ?? '',
       email: json['email'] ?? '',
