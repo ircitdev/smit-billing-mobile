@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'api_client.dart';
 
@@ -16,6 +17,11 @@ class PushService {
       sound: true,
     );
 
+    // Get APNS token first on iOS (required before FCM token)
+    if (Platform.isIOS) {
+      await messaging.getAPNSToken();
+    }
+
     // Get FCM token and register on server
     final token = await messaging.getToken();
     if (token != null) {
@@ -28,9 +34,10 @@ class PushService {
 
   Future<void> _registerToken(String token) async {
     try {
+      final platform = Platform.isIOS ? 'ios' : 'android';
       await _api.post('/push/register', {
         'token': token,
-        'platform': 'android', // TODO: detect platform
+        'platform': platform,
       });
     } catch (_) {}
   }
