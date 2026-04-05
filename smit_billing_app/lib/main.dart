@@ -32,7 +32,7 @@ class SmitBillingApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'СмИТ Биллинг',
+        title: 'SmIT Billing',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(

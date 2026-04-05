@@ -16,7 +16,7 @@ class DashboardTab extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('СмИТ Биллинг'),
+        title: const Text('SmIT Billing'),
       ),
       body: RefreshIndicator(
         onRefresh: () => account.loadStatus(),

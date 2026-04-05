@@ -58,7 +58,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     if (_messages.isEmpty) {
       _messages.add(_ChatMsg(
-        text: 'Здравствуйте! Я AI-ассистент СМИТ. 😊\nЧем могу помочь?',
+        text: 'Здравствуйте! Я AI-ассистент SmIT. 😊\nЧем могу помочь?',
         isUser: false,
         time: DateTime.now(),
       ));
