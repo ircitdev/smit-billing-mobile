@@ -20,6 +20,7 @@ class _ChatScreenState extends State<ChatScreen> {
   String? _sessionId;
   bool _sending = false;
   bool _escalated = false;
+  bool _feedbackEnabled = true; // обновляется из /chat/status
 
   static const _sessionKey = 'chat_session_id';
   static const _sessionExpiresKey = 'chat_session_expires';
@@ -30,6 +31,21 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _init();
+    _loadStatus();
+  }
+
+  Future<void> _loadStatus() async {
+    final api = Provider.of<AuthProvider>(context, listen: false).api;
+    try {
+      final data = await api.get('/chat/status');
+      if (mounted) {
+        setState(() {
+          _feedbackEnabled = data['feedback_enabled'] != false;
+        });
+      }
+    } catch (_) {
+      // если /chat/status недоступен — оставим feedback включённым по умолчанию
+    }
   }
 
   Future<void> _init() async {
@@ -43,10 +59,16 @@ class _ChatScreenState extends State<ChatScreen> {
         try {
           final list = (json.decode(historyJson) as List);
           for (final m in list) {
+            final aiIdxRaw = m['aiIdx'];
+            final int? aiIdx = (aiIdxRaw is int)
+                ? aiIdxRaw
+                : (aiIdxRaw is num ? aiIdxRaw.toInt() : null);
             _messages.add(_ChatMsg(
               text: m['text'] ?? '',
               isUser: m['isUser'] == true,
               time: DateTime.tryParse(m['time'] ?? '') ?? DateTime.now(),
+              assistantIndex: aiIdx,
+              feedback: m['fb'],
             ));
           }
         } catch (_) {}
@@ -77,7 +99,11 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _saveHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final list = _messages.map((m) => {
-      'text': m.text, 'isUser': m.isUser, 'time': m.time.toIso8601String(),
+      'text': m.text,
+      'isUser': m.isUser,
+      'time': m.time.toIso8601String(),
+      if (m.assistantIndex != null) 'aiIdx': m.assistantIndex,
+      if (m.feedback != null) 'fb': m.feedback,
     }).toList();
     await prefs.setString(_historyKey, json.encode(list));
   }
@@ -112,9 +138,21 @@ class _ChatScreenState extends State<ChatScreen> {
       if (_sessionId != null) _saveSession(_sessionId!);
       final response = data['response'] ?? 'Нет ответа';
       final escalated = data['escalated'] == true;
+      final aiIdxRaw = data['assistant_index'];
+      final int? aiIdx = (aiIdxRaw is int)
+          ? aiIdxRaw
+          : (aiIdxRaw is num ? aiIdxRaw.toInt() : null);
+      if (data['feedback_enabled'] != null) {
+        _feedbackEnabled = data['feedback_enabled'] != false;
+      }
 
       setState(() {
-        _messages.add(_ChatMsg(text: response, isUser: false, time: DateTime.now()));
+        _messages.add(_ChatMsg(
+          text: response,
+          isUser: false,
+          time: DateTime.now(),
+          assistantIndex: aiIdx,
+        ));
         if (escalated) _escalated = true;
       });
       _saveHistory();
@@ -154,6 +192,34 @@ class _ChatScreenState extends State<ChatScreen> {
     } finally {
       setState(() => _sending = false);
       _scrollToBottom();
+    }
+  }
+
+  Future<void> _sendFeedback(_ChatMsg msg, String rating) async {
+    if (_sessionId == null || msg.assistantIndex == null) return;
+    final previous = msg.feedback;
+    final next = (previous == rating) ? '' : rating; // повторное нажатие = снять
+    setState(() {
+      msg.feedback = next.isEmpty ? null : next;
+    });
+    _saveHistory();
+    final api = Provider.of<AuthProvider>(context, listen: false).api;
+    try {
+      await api.post('/chat/feedback', {
+        'session_id': _sessionId,
+        'message_index': msg.assistantIndex,
+        'rating': next,
+        'text': '',
+      });
+    } catch (_) {
+      // откат на ошибке
+      if (mounted) {
+        setState(() { msg.feedback = previous; });
+        _saveHistory();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось отправить оценку')),
+        );
+      }
     }
   }
 
@@ -347,9 +413,32 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             RichText(text: TextSpan(children: _parseMd(msg.text, textColor))),
             const SizedBox(height: 3),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Text(timeStr, style: TextStyle(color: textColor.withOpacity(0.45), fontSize: 10.5)),
+            Row(
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                // Кнопки 👍 / 👎 показываем только для AI-сообщений с индексом и при разрешении сервера
+                if (!isUser && !msg.isError && msg.assistantIndex != null && _feedbackEnabled) ...[
+                  _FeedbackButton(
+                    icon: Icons.thumb_up_alt_outlined,
+                    activeIcon: Icons.thumb_up,
+                    active: msg.feedback == 'up',
+                    color: textColor,
+                    tooltip: 'Полезно',
+                    onTap: () => _sendFeedback(msg, 'up'),
+                  ),
+                  const SizedBox(width: 4),
+                  _FeedbackButton(
+                    icon: Icons.thumb_down_alt_outlined,
+                    activeIcon: Icons.thumb_down,
+                    active: msg.feedback == 'down',
+                    color: textColor,
+                    tooltip: 'Не помогло',
+                    onTap: () => _sendFeedback(msg, 'down'),
+                  ),
+                ],
+                const Spacer(),
+                Text(timeStr, style: TextStyle(color: textColor.withOpacity(0.45), fontSize: 10.5)),
+              ],
             ),
           ],
         ),
@@ -383,7 +472,54 @@ class _ChatMsg {
   final bool isUser;
   final DateTime time;
   final bool isError;
-  _ChatMsg({required this.text, required this.isUser, required this.time, this.isError = false});
+  // assistantIndex — 0-based индекс среди assistant-сообщений сессии
+  // (для отправки POST /chat/feedback с message_index=N). null для user-сообщений.
+  final int? assistantIndex;
+  // feedback — 'up' | 'down' | null. Локально обновляется при тапе на кнопку.
+  String? feedback;
+  _ChatMsg({
+    required this.text,
+    required this.isUser,
+    required this.time,
+    this.isError = false,
+    this.assistantIndex,
+    this.feedback,
+  });
+}
+
+class _FeedbackButton extends StatelessWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final bool active;
+  final Color color;
+  final String tooltip;
+  final VoidCallback onTap;
+  const _FeedbackButton({
+    required this.icon,
+    required this.activeIcon,
+    required this.active,
+    required this.color,
+    required this.tooltip,
+    required this.onTap,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkResponse(
+        onTap: onTap,
+        radius: 18,
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Icon(
+            active ? activeIcon : icon,
+            size: 16,
+            color: active ? const Color(0xFF5BA89D) : color.withOpacity(0.5),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _TypingDots extends StatefulWidget {
