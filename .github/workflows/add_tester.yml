@@ -1,0 +1,83 @@
+name: Add TestFlight Tester
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: "Tester email"
+        required: true
+        default: "err4@yandex.ru"
+
+jobs:
+  add-tester:
+    runs-on: macos-15
+    steps:
+      - name: Add tester via App Store Connect API
+        env:
+          API_KEY_ID: ${{ secrets.APP_STORE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_API_ISSUER_ID }}
+          API_KEY_P8: ${{ secrets.APP_STORE_API_KEY_P8 }}
+          TESTER_EMAIL: ${{ inputs.email }}
+        run: |
+          pip3 install PyJWT requests --quiet
+          mkdir -p ~/private_keys
+          echo "$API_KEY_P8" > ~/private_keys/AuthKey_${API_KEY_ID}.p8
+
+          python3 << 'PYEOF'
+          import jwt, time, requests, os
+
+          key_id = os.environ["API_KEY_ID"]
+          issuer_id = os.environ["API_ISSUER_ID"]
+          email = os.environ["TESTER_EMAIL"]
+          key_path = os.path.expanduser(f"~/private_keys/AuthKey_{key_id}.p8")
+
+          with open(key_path) as f:
+              private_key = f.read()
+
+          token = jwt.encode(
+              {"iss": issuer_id, "exp": int(time.time()) + 1200, "aud": "appstoreconnect-v1"},
+              private_key, algorithm="ES256", headers={"kid": key_id}
+          )
+          h = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+          # Find app
+          r = requests.get("https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=ru.smit34.smitBilling", headers=h)
+          r.raise_for_status()
+          app_id = r.json()["data"][0]["id"]
+          print(f"App ID: {app_id}")
+
+          # Find beta groups
+          r = requests.get(f"https://api.appstoreconnect.apple.com/v1/apps/{app_id}/betaGroups", headers=h)
+          groups = r.json()["data"]
+          for g in groups:
+              print(f"  Group: {g['attributes']['name']} ({g['id']})")
+
+          # Use first group (or find "All Internal Testers" / external group)
+          group = next((g for g in groups if not g["attributes"]["isInternalGroup"]), groups[0])
+          group_id = group["id"]
+          print(f"Using group: {group['attributes']['name']}")
+
+          # Create or find tester
+          payload = {"data": {"type": "betaTesters", "attributes": {"email": email, "firstName": "Tester", "lastName": ""}}}
+          r = requests.post("https://api.appstoreconnect.apple.com/v1/betaTesters", headers=h, json=payload)
+          print(f"Create tester: {r.status_code}")
+
+          if r.status_code in (200, 201):
+              tester_id = r.json()["data"]["id"]
+          elif r.status_code == 409:
+              r2 = requests.get(f"https://api.appstoreconnect.apple.com/v1/betaTesters?filter[email]={email}", headers=h)
+              tester_id = r2.json()["data"][0]["id"]
+              print(f"Existing tester ID: {tester_id}")
+          else:
+              print(f"Error: {r.text}")
+              exit(1)
+
+          # Add to group
+          link = {"data": [{"type": "betaTesters", "id": tester_id}]}
+          r = requests.post(f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}/relationships/betaTesters", headers=h, json=link)
+          print(f"Add to group: {r.status_code}")
+          if r.status_code in (204, 200):
+              print(f"✓ {email} added to TestFlight group '{group['attributes']['name']}'")
+          else:
+              print(f"Response: {r.text[:300]}")
+          PYEOF
