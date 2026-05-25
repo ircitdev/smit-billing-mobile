@@ -29,6 +29,10 @@ dependencies:
   url_launcher: ^6.3.1
   # Sign in with Apple
   sign_in_with_apple: ^6.1.0
+  # WebView (payment screens)
+  webview_flutter: ^4.10.0
+  # In-app review
+  in_app_review: ^2.0.9
   # Utils
   intl: ^0.19.0
   shared_preferences: ^2.3.4
