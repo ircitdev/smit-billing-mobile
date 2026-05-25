@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -46,18 +46,126 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _loginVk() async {
-    final uri = Uri.parse('https://testbill.smit34.ru/lk/oauth/vk/');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+  Future<void> _loginWithApple() async {
+    final auth = context.read<AuthProvider>();
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+      final identityToken = credential.identityToken;
+      if (identityToken == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось получить токен Apple ID')),
+        );
+        return;
+      }
+
+      final result = await auth.loginWithApple(identityToken);
+      if (!mounted) return;
+
+      if (result == 'success') {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else if (result.startsWith('needs_linking:')) {
+        final appleToken = result.substring('needs_linking:'.length);
+        _showLinkingDialog(appleToken);
+      }
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) return;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка Apple ID: ${e.message}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(auth.error ?? 'Ошибка входа через Apple ID')),
+      );
     }
   }
 
-  Future<void> _loginTelegram() async {
-    final uri = Uri.parse('https://t.me/SMITSupport_bot?start=login');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+  void _showLinkingDialog(String appleToken) {
+    final contractCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    bool obscure = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Привязать Apple ID'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Для первого входа через Apple ID введите номер договора и пароль, '
+                'чтобы привязать аккаунт.',
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: contractCtrl,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Номер договора',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: passwordCtrl,
+                obscureText: obscure,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: 'Пароль',
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    ),
+                    onPressed: () => setState(() => obscure = !obscure),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Отмена'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final auth = context.read<AuthProvider>();
+                final success = await auth.linkAppleAccount(
+                  appleToken,
+                  contractCtrl.text.trim(),
+                  passwordCtrl.text.trim(),
+                );
+                if (!mounted) return;
+                if (success) {
+                  Navigator.pushReplacementNamed(context, '/home');
+                } else if (auth.error != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(auth.error!)),
+                  );
+                }
+              },
+              child: const Text('Привязать и войти'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -84,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'SmIT Billing',
+                  'СмИТ Биллинг',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -147,35 +255,27 @@ class _LoginScreenState extends State<LoginScreen> {
                         : const Text('Войти'),
                   ),
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  'Или войти через',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // VK
-                    OutlinedButton.icon(
-                      onPressed: _loginVk,
-                      icon: const Text('VK',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFF0077FF))),
-                      label: const Text('ВКонтакте'),
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        'или',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                      ),
                     ),
-                    const SizedBox(width: 12),
-                    // Telegram
-                    OutlinedButton.icon(
-                      onPressed: _loginTelegram,
-                      icon: const Icon(Icons.send,
-                          color: Color(0xFF0088CC), size: 18),
-                      label: const Text('Telegram'),
-                    ),
+                    const Expanded(child: Divider()),
                   ],
+                ),
+                const SizedBox(height: 16),
+                SignInWithAppleButton(
+                  onPressed: auth.isLoading ? () {} : _loginWithApple,
+                  style: SignInWithAppleButtonStyle.black,
+                  borderRadius: const BorderRadius.all(Radius.circular(8)),
                 ),
               ],
             ),

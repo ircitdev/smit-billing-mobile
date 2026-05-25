@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../providers/account_provider.dart';
 import 'change_password_screen.dart';
@@ -164,87 +163,6 @@ class ProfileTab extends StatelessWidget {
                     : 'Приостановить услуги на время отпуска'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showVoluntaryBlockDialog(context),
-              ),
-            ),
-
-            const Divider(height: 32),
-
-            // Social login
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 4),
-              child: Row(
-                children: [
-                  Icon(Icons.link, size: 20, color: colorScheme.primary),
-                  const SizedBox(width: 8),
-                  Text('Вход через соцсети',
-                      style: Theme.of(context).textTheme.titleMedium),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 12),
-              child: Text(
-                'Привяжите аккаунт для быстрого входа',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-              ),
-            ),
-            Card(
-              child: ListTile(
-                leading: Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0077FF),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Center(
-                    child: Text('VK',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13)),
-                  ),
-                ),
-                title: const Text('ВКонтакте'),
-                subtitle: const Text('Не привязан'),
-                trailing: OutlinedButton(
-                  onPressed: () async {
-                    final uri = Uri.parse(
-                        'https://testbill.smit34.ru/lk/oauth/vk/');
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri,
-                          mode: LaunchMode.externalApplication);
-                    }
-                  },
-                  child: const Text('Привязать'),
-                ),
-              ),
-            ),
-            Card(
-              child: ListTile(
-                leading: Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0088CC),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child:
-                      const Icon(Icons.send, color: Colors.white, size: 18),
-                ),
-                title: const Text('Telegram'),
-                subtitle: const Text('Не привязан'),
-                trailing: OutlinedButton(
-                  onPressed: () async {
-                    final uri =
-                        Uri.parse('https://t.me/SMITSupport_bot?start=login');
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri,
-                          mode: LaunchMode.externalApplication);
-                    }
-                  },
-                  child: const Text('Привязать'),
-                ),
               ),
             ),
 

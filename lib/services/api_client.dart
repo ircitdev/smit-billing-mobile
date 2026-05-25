@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiClient {
-  static const String baseUrl = 'https://testbill.smit34.ru/mobile-api/v1';
+  static const String baseUrl = 'https://demo.billing.smit34.ru/mobile-api/v1';
   final _storage = const FlutterSecureStorage();
 
   String? _accessToken;
@@ -52,6 +52,43 @@ class ApiClient {
       }
     } catch (_) {}
     return false;
+  }
+
+  Future<Map<String, dynamic>> loginWithApple(String identityToken) async {
+    final resp = await http.post(
+      Uri.parse('$baseUrl/auth/apple'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'identity_token': identityToken}),
+    );
+    if (resp.statusCode == 200) {
+      final data = jsonDecode(resp.body);
+      if (data['needs_linking'] != true) {
+        await saveTokens(data['access'], data['refresh']);
+      }
+      return data;
+    }
+    final error = jsonDecode(resp.body);
+    throw ApiException(error['detail'] ?? 'Ошибка авторизации Apple ID', resp.statusCode);
+  }
+
+  Future<Map<String, dynamic>> linkAppleAccount(
+      String appleToken, String contract, String password) async {
+    final resp = await http.post(
+      Uri.parse('$baseUrl/auth/apple/link'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'apple_token': appleToken,
+        'contract': contract,
+        'password': password,
+      }),
+    );
+    if (resp.statusCode == 200) {
+      final data = jsonDecode(resp.body);
+      await saveTokens(data['access'], data['refresh']);
+      return data;
+    }
+    final error = jsonDecode(resp.body);
+    throw ApiException(error['detail'] ?? 'Ошибка привязки Apple ID', resp.statusCode);
   }
 
   Future<Map<String, dynamic>> login(String contract, String password) async {

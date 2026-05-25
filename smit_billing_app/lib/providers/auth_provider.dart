@@ -73,6 +73,61 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Returns: 'success', 'needs_linking:<apple_token>', or throws ApiException.
+  Future<String> loginWithApple(String identityToken) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final data = await api.loginWithApple(identityToken);
+      if (data['needs_linking'] == true) {
+        _isLoading = false;
+        notifyListeners();
+        return 'needs_linking:${data['apple_token']}';
+      }
+      _isAuthenticated = true;
+      _isLoading = false;
+      _initPush();
+      notifyListeners();
+      return 'success';
+    } on ApiException catch (e) {
+      _error = e.message;
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    } catch (e) {
+      _error = 'Ошибка подключения к серверу';
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<bool> linkAppleAccount(
+      String appleToken, String contract, String password) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await api.linkAppleAccount(appleToken, contract, password);
+      _isAuthenticated = true;
+      _isLoading = false;
+      _initPush();
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.message;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _error = 'Ошибка подключения к серверу';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> login(String contract, String password) async {
     _isLoading = true;
     _error = null;
