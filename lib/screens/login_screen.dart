@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -255,28 +256,33 @@ class _LoginScreenState extends State<LoginScreen> {
                         : const Text('Войти'),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    const Expanded(child: Divider()),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(
-                        'или',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                            ),
+                // Вход через Apple ID — только на iOS (на Android бессмысленно
+                // и недоступно). Кнопка обязательна для App Store, если есть
+                // сторонние соц-логины.
+                if (Platform.isIOS) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Expanded(child: Divider()),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'или',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                        ),
                       ),
-                    ),
-                    const Expanded(child: Divider()),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SignInWithAppleButton(
-                  onPressed: auth.isLoading ? () {} : _loginWithApple,
-                  style: SignInWithAppleButtonStyle.black,
-                  borderRadius: const BorderRadius.all(Radius.circular(8)),
-                ),
+                      const Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SignInWithAppleButton(
+                    onPressed: auth.isLoading ? () {} : _loginWithApple,
+                    style: SignInWithAppleButtonStyle.black,
+                    borderRadius: const BorderRadius.all(Radius.circular(8)),
+                  ),
+                ],
               ],
             ),
           ),

@@ -8,6 +8,8 @@ class VideoCameraModel {
   final bool active;
   final bool isOutdoor;
   final bool isPtz;
+  final bool canView;
+  final String streamUrl;
 
   VideoCameraModel({
     required this.id,
@@ -17,6 +19,8 @@ class VideoCameraModel {
     required this.active,
     required this.isOutdoor,
     required this.isPtz,
+    required this.canView,
+    required this.streamUrl,
   });
 
   factory VideoCameraModel.fromJson(Map<String, dynamic> j) => VideoCameraModel(
@@ -27,6 +31,8 @@ class VideoCameraModel {
         active: j['active'] ?? true,
         isOutdoor: j['is_outdoor'] ?? false,
         isPtz: j['is_ptz'] ?? false,
+        canView: j['can_view'] ?? false,
+        streamUrl: j['stream_url'] ?? '',
       );
 }
 

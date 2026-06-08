@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/video_object.dart';
 import 'payment_screen.dart';
+import 'video_player_screen.dart';
 
 /// Экран «Видеонаблюдение» (Фаза 6, mobile).
 /// Объекты абонента, камеры, подписки, статус проекта, баланс видео-счёта.
@@ -224,19 +225,7 @@ class _ObjectCard extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: object.cameras
-                    .map((c) => Semantics(
-                          label: '${c.label}: ${c.active ? "активна" : "отключена"}',
-                          child: Chip(
-                            visualDensity: VisualDensity.compact,
-                            avatar: Icon(
-                              c.active ? Icons.fiber_manual_record : Icons.block,
-                              size: 14,
-                              color: c.active ? Colors.green : cs.outline,
-                            ),
-                            label: Text(c.label,
-                                style: const TextStyle(fontSize: 12)),
-                          ),
-                        ))
+                    .map((c) => _CameraChip(camera: c))
                     .toList(),
               ),
             ],
@@ -282,6 +271,65 @@ class _ObjectCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Чип камеры. Если поток доступен (canView + streamUrl) — кликабелен,
+/// открывает WebRTC-плеер go2rtc. Иначе показывает причину недоступности.
+class _CameraChip extends StatelessWidget {
+  final VideoCameraModel camera;
+
+  const _CameraChip({required this.camera});
+
+  bool get _viewable => camera.canView && camera.streamUrl.isNotEmpty;
+
+  void _open(BuildContext context) {
+    if (_viewable) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VideoPlayerScreen(
+            streamUrl: camera.streamUrl,
+            title: camera.label,
+          ),
+        ),
+      );
+    } else {
+      final reason = !camera.active
+          ? 'Камера отключена'
+          : 'Просмотр недоступен (нет потока или объект заблокирован)';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(reason), duration: const Duration(seconds: 2)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final color = _viewable
+        ? cs.primary
+        : (camera.active ? cs.outline : cs.outline);
+    return Semantics(
+      button: true,
+      label: '${camera.label}: '
+          '${_viewable ? "смотреть" : (camera.active ? "просмотр недоступен" : "отключена")}',
+      child: ActionChip(
+        visualDensity: VisualDensity.compact,
+        onPressed: () => _open(context),
+        avatar: Icon(
+          _viewable
+              ? Icons.play_circle_fill
+              : (camera.active ? Icons.videocam_off : Icons.block),
+          size: 16,
+          color: color,
+        ),
+        label: Text(camera.label, style: const TextStyle(fontSize: 12)),
+        side: _viewable
+            ? BorderSide(color: cs.primary.withValues(alpha: 0.5))
+            : null,
       ),
     );
   }

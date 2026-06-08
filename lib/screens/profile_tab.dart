@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/account_provider.dart';
 import 'change_password_screen.dart';
+import 'game_hub.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -25,14 +26,10 @@ class ProfileTab extends StatelessWidget {
             Center(
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 40,
-                    child: Text(
-                      status != null && status.name.isNotEmpty
-                          ? status.name[0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(fontSize: 32),
-                    ),
+                  _AvatarEasterEgg(
+                    letter: status != null && status.name.isNotEmpty
+                        ? status.name[0].toUpperCase()
+                        : '?',
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -323,6 +320,53 @@ class _ContactField extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Аватар с пасхалкой: 6 быстрых тапов подряд открывают мини-игры.
+class _AvatarEasterEgg extends StatefulWidget {
+  final String letter;
+
+  const _AvatarEasterEgg({required this.letter});
+
+  @override
+  State<_AvatarEasterEgg> createState() => _AvatarEasterEggState();
+}
+
+class _AvatarEasterEggState extends State<_AvatarEasterEgg> {
+  int _taps = 0;
+  DateTime _lastTap = DateTime.fromMillisecondsSinceEpoch(0);
+
+  void _onTap() {
+    final now = DateTime.now();
+    // Сбрасываем счётчик, если между тапами прошло больше 1.2 сек
+    if (now.difference(_lastTap) > const Duration(milliseconds: 1200)) {
+      _taps = 0;
+    }
+    _lastTap = now;
+    _taps++;
+    if (_taps >= 6) {
+      _taps = 0;
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const GameHub()),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _onTap,
+      behavior: HitTestBehavior.opaque,
+      child: CircleAvatar(
+        radius: 40,
+        child: Text(
+          widget.letter,
+          style: const TextStyle(fontSize: 32),
+        ),
       ),
     );
   }
