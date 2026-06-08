@@ -3,20 +3,13 @@
 <plist version="1.0">
 <dict>
     <key>method</key>
-    <string>app-store</string>
+    <string>app-store-connect</string>
     <key>destination</key>
     <string>upload</string>
     <key>signingStyle</key>
-    <string>manual</string>
+    <string>automatic</string>
     <key>teamID</key>
     <string>6LX2W6558K</string>
-    <key>signingCertificate</key>
-    <string>Apple Distribution</string>
-    <key>provisioningProfiles</key>
-    <dict>
-        <key>ru.smit34.smitBilling</key>
-        <string>SmIT Billing AppStore</string>
-    </dict>
     <key>uploadSymbols</key>
     <true/>
 </dict>

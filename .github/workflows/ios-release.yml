@@ -81,12 +81,10 @@ jobs:
 
       - name: Set signing in Xcode project
         run: |
-          # Set manual signing only for Runner target
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/' ios/Runner.xcodeproj/project.pbxproj
+          # Automatic signing — Xcode managed profile через App Store Connect API key.
+          # Профиль создаётся/обновляется автоматически с нужными capability (вкл. Sign In with Apple),
+          # поэтому НЕ форсим Manual и НЕ хардкодим устаревший профиль "SmIT Billing AppStore".
           sed -i '' 's/DEVELOPMENT_TEAM = ""/DEVELOPMENT_TEAM = 6LX2W6558K/' ios/Runner.xcodeproj/project.pbxproj
-
-          # Add provisioning profile to Release config
-          /usr/libexec/PlistBuddy -c "Set :objects:97C146F01CF9000F007C117D:buildSettings:PROVISIONING_PROFILE_SPECIFIER 'SmIT Billing AppStore'" ios/Runner.xcodeproj/project.pbxproj 2>/dev/null || true
 
       - name: Build archive
         env:
@@ -107,7 +105,6 @@ jobs:
             -authenticationKeyIssuerID ${APP_STORE_API_ISSUER_ID} \
             COMPILER_INDEX_STORE_ENABLE=NO \
             CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES=YES \
-            'RUNNER_CODE_SIGN_IDENTITY=Apple Distribution' \
             DEVELOPMENT_TEAM=6LX2W6558K \
             CODE_SIGN_STYLE=Automatic \
             archive
