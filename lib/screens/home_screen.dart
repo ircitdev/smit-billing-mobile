@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
 import '../providers/account_provider.dart';
 import '../services/review_service.dart';
 import 'dashboard_tab.dart';
 import 'finance_tab.dart';
 import 'support_tab.dart';
-import 'video_screen.dart';
+import 'services_hub_tab.dart';
 import 'profile_tab.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -23,7 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
     DashboardTab(),
     FinanceTab(),
     SupportTab(),
-    VideoScreen(),
+    ServicesHubTab(),
     ProfileTab(),
   ];
 
@@ -65,9 +64,9 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Поддержка',
           ),
           NavigationDestination(
-            icon: Icon(Icons.videocam_outlined),
-            selectedIcon: Icon(Icons.videocam),
-            label: 'Видео',
+            icon: Icon(Icons.account_tree_outlined),
+            selectedIcon: Icon(Icons.account_tree),
+            label: 'Услуги',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
