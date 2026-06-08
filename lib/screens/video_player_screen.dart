@@ -57,6 +57,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         title: Text(widget.title, overflow: TextOverflow.ellipsis),
         leading: IconButton(
           icon: const Icon(Icons.close),
+          tooltip: 'Закрыть',
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),

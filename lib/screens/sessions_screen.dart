@@ -123,7 +123,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
             padding: const EdgeInsets.symmetric(vertical: 40),
             child: Center(
               child: Text('Сессий пока нет',
-                  style: TextStyle(color: cs.outline)),
+                  style: TextStyle(color: cs.onSurfaceVariant)),
             ),
           )
         else
@@ -155,7 +155,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(label,
-                      style: TextStyle(fontSize: 11, color: cs.outline),
+                      style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
                       maxLines: 2),
                   Text(value,
                       style: const TextStyle(
@@ -233,14 +233,14 @@ class _SessionsScreenState extends State<SessionsScreen> {
                 if (s['vlan'] != null) ...[
                   const SizedBox(width: 12),
                   Text('VLAN ${s['vlan']}',
-                      style: TextStyle(color: cs.outline, fontSize: 13)),
+                      style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
                 ],
                 if ((s['end_reason'] as String?)?.isNotEmpty == true) ...[
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(s['end_reason'],
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: cs.outline, fontSize: 12)),
+                        style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
                   ),
                 ],
               ]),

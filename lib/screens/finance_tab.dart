@@ -284,7 +284,7 @@ class _OperationTile extends StatelessWidget {
 
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: color.withOpacity(0.1),
+        backgroundColor: color.withValues(alpha: 0.1),
         child: Icon(
           isIncome ? Icons.arrow_downward : Icons.arrow_upward,
           color: color,

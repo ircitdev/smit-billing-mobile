@@ -109,12 +109,12 @@ class BalanceCard extends StatelessWidget {
               Row(
                 children: [
                   Icon(Icons.history, size: 14,
-                      color: colorScheme.onPrimaryContainer.withOpacity(0.7)),
+                      color: colorScheme.onPrimaryContainer.withValues(alpha: 0.7)),
                   const SizedBox(width: 4),
                   Text(
                     'Последний платёж ',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onPrimaryContainer.withOpacity(0.7),
+                          color: colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
                         ),
                   ),
                   Text(
@@ -127,7 +127,7 @@ class BalanceCard extends StatelessWidget {
                   Text(
                     '  ${lastPayment!['date'] ?? ''}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onPrimaryContainer.withOpacity(0.7),
+                          color: colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
                         ),
                   ),
                 ],

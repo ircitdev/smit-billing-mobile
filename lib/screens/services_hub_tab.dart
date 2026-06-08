@@ -92,7 +92,7 @@ class _ServicesHubTabState extends State<ServicesHubTab> {
                     Center(
                       child: Text('Доступных услуг нет',
                           style: TextStyle(
-                              color: Theme.of(context).colorScheme.outline)),
+                              color: Theme.of(context).colorScheme.onSurfaceVariant)),
                     ),
                   ])
                 : ListView(
@@ -180,7 +180,7 @@ class _ServiceCard extends StatelessWidget {
                     ]),
                     const SizedBox(height: 2),
                     Text(subtitle,
-                        style: TextStyle(color: cs.outline, fontSize: 13)),
+                        style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
                   ],
                 ),
               ),

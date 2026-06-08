@@ -124,7 +124,7 @@ class _SupportTabState extends State<SupportTab>
                 color: Theme.of(context).colorScheme.outline),
             const SizedBox(height: 12),
             Text('Нет обращений',
-                style: TextStyle(color: Theme.of(context).colorScheme.outline)),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ],
         ),
       );
@@ -254,7 +254,7 @@ class _TicketCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(statusLabel,
@@ -355,7 +355,7 @@ class _CreateTicketSheetState extends State<_CreateTicketSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),

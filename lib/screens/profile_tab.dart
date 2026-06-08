@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../providers/auth_provider.dart';
 import '../providers/account_provider.dart';
 import '../theme/app_status_colors.dart';
@@ -199,14 +200,7 @@ class ProfileTab extends StatelessWidget {
               },
             ),
             const SizedBox(height: 16),
-            Center(
-              child: Text(
-                'v1.1.0',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-              ),
-            ),
+            const Center(child: _VersionLabel()),
           ],
         ),
       ),
@@ -307,7 +301,7 @@ class _ContactField extends StatelessWidget {
                   color: Theme.of(context)
                       .colorScheme
                       .outline
-                      .withOpacity(0.3)),
+                      .withValues(alpha: 0.3)),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -370,6 +364,38 @@ class _AvatarEasterEggState extends State<_AvatarEasterEgg> {
           style: const TextStyle(fontSize: 32),
         ),
       ),
+    );
+  }
+}
+
+/// Версия приложения из package_info (а не хардкод).
+class _VersionLabel extends StatefulWidget {
+  const _VersionLabel();
+
+  @override
+  State<_VersionLabel> createState() => _VersionLabelState();
+}
+
+class _VersionLabelState extends State<_VersionLabel> {
+  String _version = '';
+
+  @override
+  void initState() {
+    super.initState();
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) {
+        setState(() => _version = 'v${info.version} (${info.buildNumber})');
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      _version,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
     );
   }
 }

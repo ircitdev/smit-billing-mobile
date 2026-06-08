@@ -146,7 +146,7 @@ class _VideoScreenState extends State<VideoScreen> {
                 style: Theme.of(context)
                     .textTheme
                     .bodyMedium
-                    ?.copyWith(color: cs.outline)),
+                    ?.copyWith(color: cs.onSurfaceVariant)),
           ),
         ],
         if (action != null) ...[
@@ -198,7 +198,7 @@ class _ObjectCard extends StatelessWidget {
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall
-                            ?.copyWith(color: cs.outline),
+                            ?.copyWith(color: cs.onSurfaceVariant),
                       ),
                     ],
                   ),

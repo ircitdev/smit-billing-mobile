@@ -314,7 +314,7 @@ class _SpeedtestScreenState extends State<SpeedtestScreen> {
                       style: const TextStyle(
                           fontSize: 44, fontWeight: FontWeight.bold)),
                   Text(_phaseLabel,
-                      style: TextStyle(color: cs.outline)),
+                      style: TextStyle(color: cs.onSurfaceVariant)),
                 ]),
               ]),
             ),
@@ -341,7 +341,7 @@ class _SpeedtestScreenState extends State<SpeedtestScreen> {
               'Тест займёт около 30 секунд. Для точности закройте другие '
               'приложения, отключите VPN и тестируйте через провод (если есть).',
               textAlign: TextAlign.center,
-              style: TextStyle(color: cs.outline, fontSize: 12),
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
             ),
           ],
         ),
@@ -372,7 +372,7 @@ class _SpeedtestScreenState extends State<SpeedtestScreen> {
               fontSize: 20, fontWeight: FontWeight.bold, color: color)),
       Text(label,
           style: TextStyle(
-              fontSize: 11, color: Theme.of(context).colorScheme.outline)),
+              fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant)),
     ]);
   }
 }

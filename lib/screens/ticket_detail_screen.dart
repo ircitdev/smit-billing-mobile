@@ -180,7 +180,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                 color: colorScheme.surface,
                 border: Border(
                   top: BorderSide(
-                      color: colorScheme.outline.withOpacity(0.2)),
+                      color: colorScheme.outline.withValues(alpha: 0.2)),
                 ),
               ),
               child: Row(

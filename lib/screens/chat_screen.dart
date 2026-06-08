@@ -269,7 +269,7 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             CircleAvatar(
               radius: 18,
-              backgroundColor: green.withOpacity(0.15),
+              backgroundColor: green.withValues(alpha: 0.15),
               child: const Icon(Icons.smart_toy, size: 20, color: green),
             ),
             const SizedBox(width: 10),
@@ -450,7 +450,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ],
                 const Spacer(),
-                Text(timeStr, style: TextStyle(color: textColor.withOpacity(0.45), fontSize: 10.5)),
+                Text(timeStr, style: TextStyle(color: textColor.withValues(alpha: 0.45), fontSize: 10.5)),
               ],
             ),
           ],
@@ -552,8 +552,21 @@ class _TypingDotsState extends State<_TypingDots> with SingleTickerProviderState
   @override
   void dispose() { _ctrl.dispose(); super.dispose(); }
 
+  Widget _dot() => Container(
+        width: 7, height: 7,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(color: Colors.grey.shade500, shape: BoxShape.circle),
+      );
+
   @override
   Widget build(BuildContext context) {
+    // prefers-reduced-motion: показываем статичные три точки без анимации.
+    if (MediaQuery.of(context).disableAnimations) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(3, (_) => _dot()),
+      );
+    }
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (_, __) => Row(
@@ -563,11 +576,7 @@ class _TypingDotsState extends State<_TypingDots> with SingleTickerProviderState
           final y = sin(t * pi * 2) * 3;
           return Transform.translate(
             offset: Offset(0, -y.abs()),
-            child: Container(
-              width: 7, height: 7,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              decoration: BoxDecoration(color: Colors.grey.shade500, shape: BoxShape.circle),
-            ),
+            child: _dot(),
           );
         }),
       ),
