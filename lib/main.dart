@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'providers/auth_provider.dart';
 import 'providers/account_provider.dart';
 import 'providers/theme_provider.dart';
+import 'theme/app_status_colors.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
@@ -33,8 +34,11 @@ class SmitBillingApp extends StatelessWidget {
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
+          // Общий стиль AppBar для обеих тем (раньше был только в light —
+          // в тёмной теме заголовки не центрировались + появлялась тень).
+          const appBar = AppBarTheme(centerTitle: true, elevation: 0);
           return MaterialApp(
-            title: 'SmIT34',
+            title: 'СмИТ Биллинг',
             debugShowCheckedModeBanner: false,
             theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(
@@ -42,7 +46,8 @@ class SmitBillingApp extends StatelessWidget {
                 brightness: Brightness.light,
               ),
               useMaterial3: true,
-              appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
+              appBarTheme: appBar,
+              extensions: const [AppStatusColors.light],
             ),
             darkTheme: ThemeData(
               colorScheme: ColorScheme.fromSeed(
@@ -50,6 +55,8 @@ class SmitBillingApp extends StatelessWidget {
                 brightness: Brightness.dark,
               ),
               useMaterial3: true,
+              appBarTheme: appBar,
+              extensions: const [AppStatusColors.dark],
             ),
             themeMode: themeProvider.themeMode,
             initialRoute: '/',

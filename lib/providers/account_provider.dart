@@ -14,6 +14,12 @@ class AccountProvider extends ChangeNotifier {
   int _historyTotal = 0;
   bool _isLoading = false;
   String? _error;
+  // Раздельные ошибки загрузки — чтобы экран отличал «пусто» от «сбой».
+  String? _historyError;
+  String? _tariffsError;
+  String? _messagesError;
+  bool _historyLoaded = false;
+  bool _tariffsLoaded = false;
 
   AccountStatus? get status => _status;
   List<Tariff> get tariffs => _tariffs;
@@ -22,6 +28,11 @@ class AccountProvider extends ChangeNotifier {
   int get historyTotal => _historyTotal;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String? get historyError => _historyError;
+  String? get tariffsError => _tariffsError;
+  String? get messagesError => _messagesError;
+  bool get historyLoaded => _historyLoaded;
+  bool get tariffsLoaded => _tariffsLoaded;
 
   void updateAuth(AuthProvider auth) {
     _api = auth.api;
@@ -56,8 +67,15 @@ class AccountProvider extends ChangeNotifier {
     try {
       final data = await _api!.get('/account/messages');
       _messages = ((data['items'] as List?) ?? []).cast<Map<String, dynamic>>();
+      _messagesError = null;
       notifyListeners();
-    } catch (_) {}
+    } on ApiException catch (e) {
+      _messagesError = e.message;
+      notifyListeners();
+    } catch (_) {
+      _messagesError = 'Не удалось загрузить сообщения';
+      notifyListeners();
+    }
   }
 
   Future<void> loadTariffs() async {
@@ -65,8 +83,18 @@ class AccountProvider extends ChangeNotifier {
     try {
       final data = await _api!.get('/account/tariffs');
       _tariffs = (data as List).map((t) => Tariff.fromJson(t)).toList();
+      _tariffsError = null;
+      _tariffsLoaded = true;
       notifyListeners();
-    } catch (_) {}
+    } on ApiException catch (e) {
+      _tariffsError = e.message;
+      _tariffsLoaded = true;
+      notifyListeners();
+    } catch (_) {
+      _tariffsError = 'Не удалось загрузить тарифы';
+      _tariffsLoaded = true;
+      notifyListeners();
+    }
   }
 
   Future<String?> changeTariff(int tariffId) async {
@@ -93,7 +121,15 @@ class AccountProvider extends ChangeNotifier {
           .map((o) => FinanceOperation.fromJson(o))
           .toList();
       _historyTotal = data['total'] ?? 0;
-    } catch (_) {}
+      _historyError = null;
+      _historyLoaded = true;
+    } on ApiException catch (e) {
+      _historyError = e.message;
+      _historyLoaded = true;
+    } catch (_) {
+      _historyError = 'Не удалось загрузить операции';
+      _historyLoaded = true;
+    }
 
     _isLoading = false;
     notifyListeners();

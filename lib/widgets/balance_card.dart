@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../theme/app_status_colors.dart';
 
 const _bgUrls = [
   'https://storage.googleapis.com/uspeshnyy-projects/smit/billing/app/bg.png',
@@ -22,15 +23,16 @@ class BalanceCard extends StatelessWidget {
     this.lastPayment,
   });
 
-  Color _balanceColor() {
-    if (balance < 0) return Colors.red;
-    if (balance < 100) return Colors.orange;
-    return Colors.green;
+  Color _balanceColor(AppStatusColors st) {
+    if (balance < 0) return st.danger;
+    if (balance < 100) return st.warning;
+    return st.success;
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final st = AppStatusColors.of(context);
 
     return Card(
       elevation: 4,
@@ -63,11 +65,11 @@ class BalanceCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: isBlocked
-                        ? Colors.red.withOpacity(0.15)
-                        : Colors.green.withOpacity(0.15),
+                        ? st.dangerContainer
+                        : st.successContainer,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isBlocked ? Colors.red.shade300 : Colors.green.shade300,
+                      color: isBlocked ? st.danger : st.success,
                       width: 0.5,
                     ),
                   ),
@@ -77,7 +79,7 @@ class BalanceCard extends StatelessWidget {
                       Icon(
                         isBlocked ? Icons.block : Icons.check_circle,
                         size: 14,
-                        color: isBlocked ? Colors.red : Colors.green,
+                        color: isBlocked ? st.onDangerContainer : st.onSuccessContainer,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -85,7 +87,7 @@ class BalanceCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: isBlocked ? Colors.red : Colors.green,
+                          color: isBlocked ? st.onDangerContainer : st.onSuccessContainer,
                         ),
                       ),
                     ],
@@ -98,7 +100,7 @@ class BalanceCard extends StatelessWidget {
               '${balance.toStringAsFixed(2)} \u20BD',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: _balanceColor(),
+                    color: _balanceColor(st),
                   ),
             ),
             // Last payment
@@ -118,7 +120,7 @@ class BalanceCard extends StatelessWidget {
                   Text(
                     '+${lastPayment!['amount']} \u20BD',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.green,
+                          color: st.success,
                           fontWeight: FontWeight.w600,
                         ),
                   ),

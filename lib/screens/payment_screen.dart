@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/account_provider.dart';
 import 'webview_payment_screen.dart';
@@ -13,6 +14,7 @@ class PaymentScreen extends StatefulWidget {
 class _PaymentScreenState extends State<PaymentScreen> {
   final _amountController = TextEditingController(text: '500');
   bool _isLoading = false;
+  String? _amountError;
 
   @override
   void dispose() {
@@ -21,13 +23,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _pay() async {
-    final amount = double.tryParse(_amountController.text.trim());
-    if (amount == null || amount < 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Введите сумму от 1 \u20BD')),
-      );
+    final amount =
+        double.tryParse(_amountController.text.trim().replaceAll(',', '.'));
+    if (amount != null && amount > 100000) {
+      setState(() => _amountError = 'Максимальная сумма — 100 000');
       return;
     }
+    if (amount == null || amount < 1) {
+      setState(() => _amountError = 'Введите сумму от 1 ₽');
+      return;
+    }
+    setState(() => _amountError = null);
 
     setState(() => _isLoading = true);
     final account = context.read<AccountProvider>();
@@ -80,6 +86,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
           );
         }
       }
+    } else {
+      // Сервер ответил, но без ссылки/формы оплаты — не оставляем тишину.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось открыть форму оплаты. Попробуйте позже.'),
+        ),
+      );
     }
   }
 
@@ -147,7 +160,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     'Для погашения задолженности необходимо минимум $debt \u20BD',
-                    style: TextStyle(color: Colors.red.shade700, fontSize: 13),
+                    style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13),
                   ),
                 ),
               const SizedBox(height: 24),
@@ -158,10 +171,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
               controller: _amountController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Сумма (\u20BD)',
-                prefixIcon: Icon(Icons.payments_outlined),
-                border: OutlineInputBorder(),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+              ],
+              onChanged: (_) {
+                if (_amountError != null) setState(() => _amountError = null);
+              },
+              decoration: InputDecoration(
+                labelText: 'Сумма (₽)',
+                prefixIcon: const Icon(Icons.payments_outlined),
+                border: const OutlineInputBorder(),
+                errorText: _amountError,
               ),
             ),
             const SizedBox(height: 16),

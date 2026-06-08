@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_client.dart';
+import '../widgets/error_state.dart';
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -13,6 +14,7 @@ class MessagesScreen extends StatefulWidget {
 class _MessagesScreenState extends State<MessagesScreen> {
   List<Map<String, dynamic>> _messages = [];
   bool _loading = true;
+  bool _error = false;
 
   @override
   void initState() {
@@ -21,7 +23,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = false;
+    });
     try {
       final api = context.read<AuthProvider>().api;
       final data = await api.get('/account/messages');
@@ -30,7 +35,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
         _loading = false;
       });
     } catch (_) {
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _error = true;
+      });
     }
   }
 
@@ -102,7 +110,12 @@ class _MessagesScreenState extends State<MessagesScreen> {
       appBar: AppBar(title: const Text('Сообщения')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _messages.isEmpty
+          : _error && _messages.isEmpty
+              ? ErrorState(
+                  message: 'Не удалось загрузить сообщения',
+                  onRetry: _load,
+                )
+              : _messages.isEmpty
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,

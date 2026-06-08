@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/account_provider.dart';
 import '../providers/auth_provider.dart';
+import '../theme/app_status_colors.dart';
 import '../widgets/balance_card.dart';
 import 'payment_screen.dart';
 import 'messages_screen.dart';
@@ -24,6 +25,7 @@ class DashboardTab extends StatelessWidget {
     final account = context.watch<AccountProvider>();
     final status = account.status;
     final colorScheme = Theme.of(context).colorScheme;
+    final st = AppStatusColors.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -56,14 +58,14 @@ class DashboardTab extends StatelessWidget {
                       // Notification banner
                       if (status.notification.isNotEmpty) ...[
                         Card(
-                          color: Colors.amber.shade50,
+                          color: st.warningContainer,
                           child: Padding(
                             padding: const EdgeInsets.all(12),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(Icons.warning_amber,
-                                    color: Colors.orange, size: 20),
+                                Icon(Icons.warning_amber,
+                                    color: st.warning, size: 20),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
@@ -71,7 +73,7 @@ class DashboardTab extends StatelessWidget {
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodySmall
-                                        ?.copyWith(color: Colors.brown),
+                                        ?.copyWith(color: st.onWarningContainer),
                                   ),
                                 ),
                               ],
@@ -84,13 +86,13 @@ class DashboardTab extends StatelessWidget {
                       // Promise pay banner
                       if (status.hasPromisePay && status.promisePayEnd != null) ...[
                         Card(
-                          color: Colors.lightBlue.shade50,
+                          color: st.infoContainer,
                           child: Padding(
                             padding: const EdgeInsets.all(12),
                             child: Row(
                               children: [
                                 Icon(Icons.handshake_outlined,
-                                    color: Colors.blue.shade600, size: 22),
+                                    color: st.info, size: 22),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
@@ -100,20 +102,20 @@ class DashboardTab extends StatelessWidget {
                                         'Обещанный платёж активен',
                                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                           fontWeight: FontWeight.w600,
-                                          color: Colors.blue.shade800,
+                                          color: st.onInfoContainer,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
                                         'до ${_fmtDate(status.promisePayEnd!)}${status.promisePayAmount != null ? " (лимит: ${status.promisePayAmount!.toStringAsFixed(0)} ₽)" : ""}',
                                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: Colors.blue.shade600,
+                                          color: st.onInfoContainer,
                                         ),
                                       ),
                                       Text(
                                         'Пополните баланс до окончания срока',
                                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: Colors.grey.shade600,
+                                          color: colorScheme.onSurfaceVariant,
                                           fontSize: 11,
                                         ),
                                       ),
@@ -254,13 +256,13 @@ class DashboardTab extends StatelessWidget {
                                 _InfoRow(
                                   label: 'Причина блок.',
                                   value: status.blockReason,
-                                  valueColor: Colors.red,
+                                  valueColor: st.danger,
                                 ),
                               if (status.hasPromisePay)
                                 _InfoRow(
                                   label: 'Обещ. платёж',
                                   value: 'Активен',
-                                  valueColor: Colors.orange,
+                                  valueColor: st.warning,
                                 ),
                             ],
                           ),

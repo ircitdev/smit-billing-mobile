@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_client.dart';
+import '../theme/app_status_colors.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -256,6 +257,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final st = AppStatusColors.of(context);
     const green = Color(0xFF5BA89D);
 
     return Scaffold(
@@ -273,7 +275,7 @@ class _ChatScreenState extends State<ChatScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('AI-ассистент', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                Text('онлайн', style: TextStyle(fontSize: 12, color: Colors.green.shade400)),
+                Text('онлайн', style: TextStyle(fontSize: 12, color: st.success)),
               ],
             ),
           ],
@@ -313,13 +315,13 @@ class _ChatScreenState extends State<ChatScreen> {
           // Escalated
           if (_escalated)
             Container(
-              color: Colors.green.shade50,
+              color: st.successContainer,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  Icon(Icons.check_circle, color: Colors.green.shade700, size: 18),
+                  Icon(Icons.check_circle, color: st.onSuccessContainer, size: 18),
                   const SizedBox(width: 8),
-                  Expanded(child: Text('Вопрос передан оператору', style: TextStyle(color: Colors.green.shade800, fontSize: 13))),
+                  Expanded(child: Text('Вопрос передан оператору', style: TextStyle(color: st.onSuccessContainer, fontSize: 13))),
                 ],
               ),
             ),
@@ -377,13 +379,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildBubble(_ChatMsg msg, bool isDark) {
     final isUser = msg.isUser;
+    final st = AppStatusColors.of(context);
     final bgColor = msg.isError
-        ? Colors.red.shade50
+        ? st.dangerContainer
         : isUser
             ? const Color(0xFF5BA89D)
             : (isDark ? const Color(0xFF2A2E37) : const Color(0xFFE8E8ED));
     final textColor = msg.isError
-        ? Colors.red.shade900
+        ? st.onDangerContainer
         : isUser
             ? Colors.white
             : (isDark ? const Color(0xFFD0D3D8) : const Color(0xFF1A1A1A));
@@ -504,19 +507,18 @@ class _FeedbackButton extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkResponse(
-        onTap: onTap,
-        radius: 18,
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Icon(
-            active ? activeIcon : icon,
-            size: 16,
-            color: active ? const Color(0xFF5BA89D) : color.withOpacity(0.5),
-          ),
-        ),
+    // Touch-зона ≥48×48 (a11y) через IconButton с constraints.
+    return IconButton(
+      onPressed: onTap,
+      tooltip: tooltip,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+      iconSize: 18,
+      icon: Icon(
+        active ? activeIcon : icon,
+        color: active
+            ? Theme.of(context).colorScheme.primary
+            : color.withValues(alpha: 0.5),
       ),
     );
   }

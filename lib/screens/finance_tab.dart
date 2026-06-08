@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/account_provider.dart';
 import '../models/finance_operation.dart';
+import '../theme/app_status_colors.dart';
+import '../widgets/error_state.dart';
 import 'payment_screen.dart';
 
 class FinanceTab extends StatefulWidget {
@@ -26,6 +28,7 @@ class _FinanceTabState extends State<FinanceTab> {
   Widget build(BuildContext context) {
     final account = context.watch<AccountProvider>();
     final colorScheme = Theme.of(context).colorScheme;
+    final st = AppStatusColors.of(context);
 
     // Calculate summary
     double income = 0, expense = 0;
@@ -67,12 +70,12 @@ class _FinanceTabState extends State<FinanceTab> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Card(
                   color: hasActive
-                      ? Colors.orange.shade50
+                      ? st.warningContainer
                       : colorScheme.surfaceContainerHighest,
                   child: ListTile(
                     leading: Icon(
                       Icons.handshake_outlined,
-                      color: hasActive ? Colors.orange : colorScheme.primary,
+                      color: hasActive ? st.onWarningContainer : colorScheme.primary,
                     ),
                     title: Text(hasActive
                         ? 'Обещанный платёж активен'
@@ -145,13 +148,13 @@ class _FinanceTabState extends State<FinanceTab> {
                   _SummaryChip(
                     label: 'Приход',
                     value: '+${income.toStringAsFixed(2)} \u20BD',
-                    color: Colors.green,
+                    color: st.success,
                   ),
                   const SizedBox(width: 8),
                   _SummaryChip(
                     label: 'Расход',
                     value: '${expense.toStringAsFixed(2)} \u20BD',
-                    color: Colors.red,
+                    color: colorScheme.error,
                   ),
                   const SizedBox(width: 8),
                   _SummaryChip(
@@ -169,8 +172,13 @@ class _FinanceTabState extends State<FinanceTab> {
           Expanded(
             child: account.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : account.history.isEmpty
-                    ? const Center(child: Text('Нет операций'))
+                : (account.historyError != null && account.history.isEmpty)
+                    ? ErrorState(
+                        message: 'Не удалось загрузить операции',
+                        onRetry: () => account.loadHistory(period: _period),
+                      )
+                    : account.history.isEmpty
+                    ? const Center(child: Text('Операций пока нет'))
                     : RefreshIndicator(
                         onRefresh: () =>
                             account.loadHistory(period: _period),
@@ -231,7 +239,8 @@ class _OperationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isIncome = op.isIncome;
-    final color = isIncome ? Colors.green : Colors.red;
+    final st = AppStatusColors.of(context);
+    final color = isIncome ? st.success : Theme.of(context).colorScheme.error;
     final sign = isIncome ? '+' : '';
 
     // Parse date

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_client.dart';
+import '../theme/app_status_colors.dart';
 import 'ticket_detail_screen.dart';
 import 'chat_screen.dart';
 
@@ -204,6 +205,7 @@ class _TicketCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final st = AppStatusColors.of(context);
     final status = ticket['status'] ?? '';
     final isActive = status == 'active' || status == 'pending';
     final id = ticket['id'] ?? '';
@@ -214,15 +216,15 @@ class _TicketCard extends StatelessWidget {
     String statusLabel;
     if (status == 'active') {
       statusIcon = Icons.chat_bubble;
-      statusColor = Colors.green;
+      statusColor = st.success;
       statusLabel = 'Активный';
     } else if (status == 'pending') {
       statusIcon = Icons.hourglass_top;
-      statusColor = Colors.orange;
+      statusColor = st.warning;
       statusLabel = 'Ожидает';
     } else {
       statusIcon = Icons.check_circle;
-      statusColor = Colors.grey;
+      statusColor = colorScheme.onSurfaceVariant;
       statusLabel = 'Закрыт';
     }
 

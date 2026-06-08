@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../theme/app_status_colors.dart';
 
 /// История подключений (RADIUS-сессии). Источник: GET /account/sessions.
 class SessionsScreen extends StatefulWidget {
@@ -87,6 +88,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
 
   Widget _buildBody() {
     final cs = Theme.of(context).colorScheme;
+    final st = AppStatusColors.of(context);
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -107,13 +109,13 @@ class _SessionsScreenState extends State<SessionsScreen> {
         Row(children: [
           Expanded(child: _kpi(Icons.format_list_numbered, 'Всего сессий', '$_total', cs.primary)),
           const SizedBox(width: 12),
-          Expanded(child: _kpi(Icons.fiber_manual_record, 'Активных сейчас', '$_active', Colors.green)),
+          Expanded(child: _kpi(Icons.fiber_manual_record, 'Активных сейчас', '$_active', st.success)),
         ]),
         const SizedBox(height: 12),
         Row(children: [
           Expanded(child: _kpi(Icons.arrow_downward, 'Скачано', _fmtBytes(_inBytes), cs.primary)),
           const SizedBox(width: 12),
-          Expanded(child: _kpi(Icons.arrow_upward, 'Загружено', _fmtBytes(_outBytes), Colors.orange)),
+          Expanded(child: _kpi(Icons.arrow_upward, 'Загружено', _fmtBytes(_outBytes), st.warning)),
         ]),
         const SizedBox(height: 16),
         if (_sessions.isEmpty)
@@ -169,6 +171,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
 
   Widget _sessionCard(Map<String, dynamic> s) {
     final cs = Theme.of(context).colorScheme;
+    final st = AppStatusColors.of(context);
     final active = s['is_active'] == true;
     final inB = s['in_bytes'] as int? ?? 0;
     final outB = s['out_bytes'] as int? ?? 0;
@@ -177,7 +180,7 @@ class _SessionsScreenState extends State<SessionsScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: active
-            ? BorderSide(color: Colors.green.withValues(alpha: 0.6), width: 1.5)
+            ? BorderSide(color: st.success.withValues(alpha: 0.6), width: 1.5)
             : BorderSide.none,
       ),
       child: Padding(
@@ -194,14 +197,14 @@ class _SessionsScreenState extends State<SessionsScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.12),
+                      color: st.successContainer,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.fiber_manual_record, size: 10, color: Colors.green),
-                      SizedBox(width: 4),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.fiber_manual_record, size: 10, color: st.onSuccessContainer),
+                      const SizedBox(width: 4),
                       Text('онлайн',
-                          style: TextStyle(fontSize: 12, color: Colors.green)),
+                          style: TextStyle(fontSize: 12, color: st.onSuccessContainer)),
                     ]),
                   ),
               ],
@@ -217,9 +220,9 @@ class _SessionsScreenState extends State<SessionsScreen> {
               Text(' ${_fmtBytes(inB)}',
                   style: TextStyle(color: cs.primary, fontWeight: FontWeight.w600)),
               const SizedBox(width: 8),
-              const Icon(Icons.arrow_upward, size: 14, color: Colors.orange),
+              Icon(Icons.arrow_upward, size: 14, color: st.warning),
               Text(' ${_fmtBytes(outB)}',
-                  style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w600)),
+                  style: TextStyle(color: st.warning, fontWeight: FontWeight.w600)),
             ]),
             if ((s['ip'] as String?)?.isNotEmpty == true) ...[
               const SizedBox(height: 6),

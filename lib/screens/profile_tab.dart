@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/account_provider.dart';
+import '../theme/app_status_colors.dart';
 import 'change_password_screen.dart';
 import 'game_hub.dart';
 
@@ -14,6 +15,7 @@ class ProfileTab extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final status = account.status;
     final colorScheme = Theme.of(context).colorScheme;
+    final st = AppStatusColors.of(context);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Профиль')),
@@ -153,7 +155,7 @@ class ProfileTab extends StatelessWidget {
             Card(
               child: ListTile(
                 leading: Icon(Icons.pause_circle_outline,
-                    color: status?.isBlocked == true ? Colors.orange : null),
+                    color: status?.isBlocked == true ? st.warning : null),
                 title: const Text('Добровольная блокировка'),
                 subtitle: Text(status?.isBlocked == true
                     ? 'Услуги приостановлены'
@@ -167,9 +169,9 @@ class ProfileTab extends StatelessWidget {
 
             // Logout
             ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
+              leading: Icon(Icons.logout, color: st.danger),
               title:
-                  const Text('Выйти', style: TextStyle(color: Colors.red)),
+                  Text('Выйти', style: TextStyle(color: st.danger)),
               onTap: () async {
                 final confirm = await showDialog<bool>(
                   context: context,

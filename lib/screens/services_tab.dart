@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/account_provider.dart';
 import '../models/tariff.dart';
+import '../widgets/error_state.dart';
 
 class ServicesTab extends StatefulWidget {
   const ServicesTab({super.key});
@@ -27,7 +28,9 @@ class _ServicesTabState extends State<ServicesTab> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Тарифы и услуги')),
-      body: ListView(
+      body: RefreshIndicator(
+        onRefresh: () => account.loadTariffs(),
+        child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           // Current tariff
@@ -72,11 +75,27 @@ class _ServicesTabState extends State<ServicesTab> {
           ],
 
           // Tariff list
-          if (account.tariffs.isEmpty)
+          if (account.tariffsError != null && account.tariffs.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 24),
+              child: ErrorState(
+                message: 'Не удалось загрузить тарифы',
+                onRetry: () => account.loadTariffs(),
+              ),
+            )
+          else if (!account.tariffsLoaded)
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: CircularProgressIndicator(),
+              ),
+            )
+          else if (account.tariffs.where((t) => !t.isCurrent).isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: Text('Других тарифов нет',
+                    style: TextStyle(color: colorScheme.onSurfaceVariant)),
               ),
             )
           else
@@ -87,6 +106,7 @@ class _ServicesTabState extends State<ServicesTab> {
                       onSwitch: () => _switchTariff(t),
                     )),
         ],
+        ),
       ),
     );
   }

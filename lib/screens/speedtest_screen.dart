@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import '../providers/auth_provider.dart';
+import '../theme/app_status_colors.dart';
 
 /// Нативный тест скорости интернета. Замер через Cloudflare speed-эндпоинты
 /// (download/upload) на чистом Dart http. Данные тарифа/сети — GET /account/speedtest_info.
@@ -240,24 +241,24 @@ class _SpeedtestScreenState extends State<SpeedtestScreen> {
   }
 
   Widget _warningExternal() {
-    final cs = Theme.of(context).colorScheme;
+    final st = AppStatusColors.of(context);
     return Card(
-      color: Colors.amber.shade50,
+      color: st.warningContainer,
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Icon(Icons.public, color: Colors.orange),
+          Icon(Icons.public, color: st.warning),
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Вы подключены не из сети оператора',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown)),
+              Text('Вы подключены не из сети оператора',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: st.onWarningContainer)),
               const SizedBox(height: 4),
               Text(
                 'Ваш текущий IP $_clientIp не относится к нашей сети. Тест измерит '
                 'скорость другого провайдера — не покажет реальную скорость вашего '
                 'тарифа. Для корректного теста подключитесь к нашей сети напрямую.',
-                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+                style: TextStyle(color: st.onWarningContainer, fontSize: 13),
               ),
             ]),
           ),
@@ -267,17 +268,18 @@ class _SpeedtestScreenState extends State<SpeedtestScreen> {
   }
 
   Widget _warningBlocked() {
+    final st = AppStatusColors.of(context);
     return Card(
-      color: Colors.red.shade50,
-      child: const Padding(
-        padding: EdgeInsets.all(14),
+      color: st.dangerContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
         child: Row(children: [
-          Icon(Icons.block, color: Colors.red),
-          SizedBox(width: 10),
+          Icon(Icons.block, color: st.onDangerContainer),
+          const SizedBox(width: 10),
           Expanded(
             child: Text('Услуги заблокированы (отрицательный баланс). '
                 'Пополните счёт, чтобы тестировать скорость.',
-                style: TextStyle(color: Colors.red)),
+                style: TextStyle(color: st.onDangerContainer)),
           ),
         ]),
       ),
@@ -354,7 +356,7 @@ class _SpeedtestScreenState extends State<SpeedtestScreen> {
         _resultItem(Icons.arrow_downward, _downMbit.toStringAsFixed(1), 'Мбит/с ↓',
             Theme.of(context).colorScheme.primary),
         _resultItem(Icons.arrow_upward, _upMbit.toStringAsFixed(1), 'Мбит/с ↑',
-            Colors.orange),
+            AppStatusColors.of(context).warning),
         _resultItem(Icons.network_ping, '$_pingMs', 'мс пинг',
             Theme.of(context).colorScheme.secondary),
       ],
