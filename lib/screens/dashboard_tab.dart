@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/account_provider.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/balance_card.dart';
 import 'payment_screen.dart';
 import 'messages_screen.dart';
@@ -49,6 +50,9 @@ class DashboardTab extends StatelessWidget {
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
+                      // Уведомления от оператора (макс 3, закрываемые, не возвращаются)
+                      const _AlertsBanner(),
+
                       // Notification banner
                       if (status.notification.isNotEmpty) ...[
                         Card(
@@ -525,6 +529,109 @@ class _InfoRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Баннер уведомлений от оператора на главной.
+/// Источник: GET /account/alerts (макс 3). Закрытие ✕ → POST .../dismiss —
+/// уведомление скрывается в БД и больше не возвращается (и в ЛК тоже).
+class _AlertsBanner extends StatefulWidget {
+  const _AlertsBanner();
+
+  @override
+  State<_AlertsBanner> createState() => _AlertsBannerState();
+}
+
+class _AlertsBannerState extends State<_AlertsBanner> {
+  List<Map<String, dynamic>> _alerts = [];
+  final Set<int> _dismissing = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final api = context.read<AuthProvider>().api;
+      final data = await api.get('/account/alerts');
+      if (!mounted) return;
+      setState(() {
+        _alerts = ((data['items'] as List?) ?? [])
+            .cast<Map<String, dynamic>>()
+            .take(3) // макс 3 одновременно
+            .toList();
+      });
+    } catch (_) {
+      // тихо — баннер просто не покажется
+    }
+  }
+
+  Future<void> _dismiss(int id) async {
+    setState(() {
+      _dismissing.add(id);
+      _alerts.removeWhere((a) => a['id'] == id);
+    });
+    try {
+      final api = context.read<AuthProvider>().api;
+      await api.post('/account/alerts/$id/dismiss', {});
+    } catch (_) {
+      // даже если сеть упала — локально уже скрыли; сервер скроет при следующем dismiss
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_alerts.isEmpty) return const SizedBox.shrink();
+    final primary = Theme.of(context).colorScheme.primary;
+    return Column(
+      children: [
+        for (final a in _alerts)
+          Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.notifications_outlined, color: primary, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          (a['title'] as String?)?.isNotEmpty == true
+                              ? a['title']
+                              : (a['body'] ?? ''),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                        if ((a['title'] as String?)?.isNotEmpty == true &&
+                            (a['body'] as String?)?.isNotEmpty == true) ...[
+                          const SizedBox(height: 2),
+                          Text(a['body'],
+                              style: Theme.of(context).textTheme.bodySmall),
+                        ],
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    tooltip: 'Скрыть',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _dismissing.contains(a['id'])
+                        ? null
+                        : () => _dismiss(a['id'] as int),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
