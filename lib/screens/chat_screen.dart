@@ -22,6 +22,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _sending = false;
   bool _escalated = false;
   bool _feedbackEnabled = true; // обновляется из /chat/status
+  bool _aiAvailable = true; // реальная доступность AI (из /chat/status)
 
   static const _sessionKey = 'chat_session_id';
   static const _sessionExpiresKey = 'chat_session_expires';
@@ -42,6 +43,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         setState(() {
           _feedbackEnabled = data['feedback_enabled'] != false;
+          _aiAvailable = data['enabled'] != false;
         });
       }
     } catch (_) {
@@ -275,7 +277,15 @@ class _ChatScreenState extends State<ChatScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('AI-ассистент', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                Text('онлайн', style: TextStyle(fontSize: 12, color: st.success)),
+                Text(
+                  _aiAvailable ? 'онлайн' : 'недоступен — напишите оператору',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _aiAvailable
+                        ? st.success
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ],

@@ -112,11 +112,60 @@ class _ServicesTabState extends State<ServicesTab> {
   }
 
   Future<void> _switchTariff(Tariff tariff) async {
+    final account = context.read<AccountProvider>();
+    final status = account.status;
+    final currentCost = status?.monthlyCost ?? 0;
+    final newCost = tariff.monthlyCost;
+    final balance = status?.balance ?? 0;
+    final notEnough = balance < newCost;
+    final cs = Theme.of(context).colorScheme;
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Смена тарифа'),
-        content: Text('Перейти на тариф «${tariff.name}»?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Перейти на тариф «${tariff.name}»?'),
+            const SizedBox(height: 14),
+            _dlgRow('Текущий тариф', status?.tariffName ?? '—'),
+            if (currentCost > 0)
+              _dlgRow('Текущая плата', '${currentCost.toStringAsFixed(0)} ₽/мес'),
+            const Divider(height: 18),
+            _dlgRow('Новый тариф', tariff.name, bold: true),
+            if (newCost > 0)
+              _dlgRow('Новая плата', '${newCost.toStringAsFixed(0)} ₽/мес', bold: true),
+            const SizedBox(height: 10),
+            Text(
+              'Изменение вступит в силу со следующего расчётного периода. '
+              'Текущий баланс: ${balance.toStringAsFixed(2)} ₽.',
+              style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+            ),
+            if (notEnough) ...[
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning_amber, size: 18, color: cs.error),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'На счету меньше месячной платы нового тарифа — '
+                      'возможна блокировка. Рекомендуем пополнить баланс.',
+                      style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                            color: cs.error,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -131,12 +180,36 @@ class _ServicesTabState extends State<ServicesTab> {
     );
     if (confirm != true || !mounted) return;
 
-    final err = await context.read<AccountProvider>().changeTariff(tariff.id);
+    final err = await account.changeTariff(tariff.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(err ?? 'Тариф изменён')),
     );
-    context.read<AccountProvider>().loadTariffs();
+    account.loadTariffs();
+  }
+
+  Widget _dlgRow(String label, String value, {bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(label,
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13)),
+          ),
+          Expanded(
+            child: Text(value,
+                style: TextStyle(
+                    fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 13)),
+          ),
+        ],
+      ),
+    );
   }
 }
 

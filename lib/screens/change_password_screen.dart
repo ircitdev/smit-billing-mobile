@@ -79,9 +79,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   labelText: 'Новый пароль',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.lock),
+                  helperText: 'Минимум 6 символов',
                 ),
                 validator: (v) {
-                  if (v == null || v.length < 4) return 'Минимум 4 символа';
+                  if (v == null || v.length < 6) {
+                    return 'Минимум 6 символов';
+                  }
                   return null;
                 },
               ),
@@ -106,10 +109,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 child: FilledButton(
                   onPressed: _isLoading ? null : _submit,
                   child: _isLoading
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20, height: 20,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                              strokeWidth: 2,
+                              color: Theme.of(context).colorScheme.onPrimary))
                       : const Text('Изменить пароль'),
                 ),
               ),

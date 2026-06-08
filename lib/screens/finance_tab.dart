@@ -86,6 +86,27 @@ class _FinanceTabState extends State<FinanceTab> {
                     trailing: hasActive
                         ? TextButton(
                             onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Отмена обещанного платежа'),
+                                  content: const Text(
+                                    'Лимит будет снят. Если баланс уйдёт в минус, '
+                                    'услуги могут быть заблокированы. Отменить?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, false),
+                                      child: const Text('Нет'),
+                                    ),
+                                    FilledButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: const Text('Отменить ОП'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirm != true || !mounted) return;
                               final err = await account.cancelPromisePay();
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(

@@ -160,14 +160,22 @@ class AccountProvider extends ChangeNotifier {
     }
   }
 
+  String? _lastPaymentError;
+  String? get lastPaymentError => _lastPaymentError;
+
   Future<Map<String, dynamic>?> createPayment(double amount) async {
+    _lastPaymentError = null;
     try {
       final data = await _api!.post('/finance/pay', {
         'amount': amount.toStringAsFixed(2),
         'system': 'yookassa',
       });
       return data;
-    } on ApiException {
+    } on ApiException catch (e) {
+      _lastPaymentError = e.message;
+      return null;
+    } catch (_) {
+      _lastPaymentError = 'Ошибка подключения к платёжной системе';
       return null;
     }
   }
@@ -206,7 +214,7 @@ class AccountProvider extends ChangeNotifier {
 
   Future<String?> replyTicket(int ticketId, String body) async {
     try {
-      final data = await _api!.post('/support/tickets/$ticketId', {'body': body});
+      await _api!.post('/support/tickets/$ticketId', {'body': body});
       return null;
     } on ApiException catch (e) {
       return e.message;

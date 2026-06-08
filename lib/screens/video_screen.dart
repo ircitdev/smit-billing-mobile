@@ -86,7 +86,32 @@ class _VideoScreenState extends State<VideoScreen> {
     );
   }
 
-  void _pay(VideoObjectModel o) {
+  Future<void> _pay(VideoObjectModel o) async {
+    // Пополнение пока идёт на основной лицевой счёт (отдельное пополнение
+    // видео-счёта требует доработки платёжного шлюза). Честно предупреждаем,
+    // чтобы абонент не ждал, что деньги попадут именно на видео-счёт.
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Пополнение счёта'),
+        content: const Text(
+          'Пополнение выполняется на основной лицевой счёт. '
+          'Если видеонаблюдение тарифицируется с отдельного счёта, '
+          'для зачисления именно на него обратитесь в поддержку.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Продолжить'),
+          ),
+        ],
+      ),
+    );
+    if (go != true || !mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const PaymentScreen()),

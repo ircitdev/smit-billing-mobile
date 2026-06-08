@@ -17,6 +17,10 @@ String _fmtDate(String dateStr) {
   }
 }
 
+/// Ключ баннера уведомлений — чтобы pull-to-refresh дашборда мог его обновить.
+final GlobalKey<_AlertsBannerState> _alertsBannerKey =
+    GlobalKey<_AlertsBannerState>();
+
 class DashboardTab extends StatelessWidget {
   const DashboardTab({super.key});
 
@@ -29,10 +33,14 @@ class DashboardTab extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SmIT34'),
+        title: const Text('Главная'),
       ),
       body: RefreshIndicator(
-        onRefresh: () => account.loadStatus(),
+        onRefresh: () async {
+          await account.loadStatus();
+          // Обновляем и баннер уведомлений (он грузится отдельно в своём State).
+          _alertsBannerKey.currentState?.reload();
+        },
         child: account.isLoading && status == null
             ? const Center(child: CircularProgressIndicator())
             : status == null
@@ -53,7 +61,7 @@ class DashboardTab extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     children: [
                       // Уведомления от оператора (макс 3, закрываемые, не возвращаются)
-                      const _AlertsBanner(),
+                      _AlertsBanner(key: _alertsBannerKey),
 
                       // Notification banner
                       if (status.notification.isNotEmpty) ...[
@@ -539,7 +547,7 @@ class _InfoRow extends StatelessWidget {
 /// Источник: GET /account/alerts (макс 3). Закрытие ✕ → POST .../dismiss —
 /// уведомление скрывается в БД и больше не возвращается (и в ЛК тоже).
 class _AlertsBanner extends StatefulWidget {
-  const _AlertsBanner();
+  const _AlertsBanner({super.key});
 
   @override
   State<_AlertsBanner> createState() => _AlertsBannerState();
@@ -554,6 +562,9 @@ class _AlertsBannerState extends State<_AlertsBanner> {
     super.initState();
     _load();
   }
+
+  /// Перезагрузка баннера снаружи (pull-to-refresh дашборда).
+  void reload() => _load();
 
   Future<void> _load() async {
     try {

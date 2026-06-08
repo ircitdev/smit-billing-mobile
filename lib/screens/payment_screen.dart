@@ -44,7 +44,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     if (result == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Платёжная система временно недоступна')),
+        SnackBar(
+          content: Text(account.lastPaymentError ??
+              'Платёжная система временно недоступна'),
+        ),
       );
       return;
     }
