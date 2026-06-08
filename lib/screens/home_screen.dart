@@ -6,6 +6,7 @@ import '../services/review_service.dart';
 import 'dashboard_tab.dart';
 import 'finance_tab.dart';
 import 'support_tab.dart';
+import 'video_screen.dart';
 import 'profile_tab.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -22,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
     DashboardTab(),
     FinanceTab(),
     SupportTab(),
+    VideoScreen(),
     ProfileTab(),
   ];
 
@@ -61,6 +63,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.support_agent_outlined),
             selectedIcon: Icon(Icons.support_agent),
             label: 'Поддержка',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.videocam_outlined),
+            selectedIcon: Icon(Icons.videocam),
+            label: 'Видео',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
