@@ -106,7 +106,10 @@ class ApiClient {
     throw ApiException(error['detail'] ?? 'Ошибка авторизации', resp.statusCode);
   }
 
-  Future<Map<String, dynamic>> get(String path) async {
+  // Возвращает dynamic: endpoint'ы отдают и объект ({...} — status), и массив
+  // ([...] — tariffs / finance history). Жёсткий тип Map<String,dynamic> ронял
+  // List-ответы в AOT-релизе → «Не удалось загрузить тарифы» (fix 2026-06-09).
+  Future<dynamic> get(String path) async {
     var resp = await http.get(
       Uri.parse('$baseUrl$path'),
       headers: _authHeaders,
