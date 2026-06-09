@@ -1,13 +1,5 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import '../theme/app_status_colors.dart';
-
-const _bgUrls = [
-  'https://storage.googleapis.com/uspeshnyy-projects/smit/billing/app/bg.png',
-  'https://storage.googleapis.com/uspeshnyy-projects/smit/billing/app/bg2.png',
-  'https://storage.googleapis.com/uspeshnyy-projects/smit/billing/app/bg3.png',
-  'https://storage.googleapis.com/uspeshnyy-projects/smit/billing/app/bg4.png',
-];
 
 class BalanceCard extends StatelessWidget {
   final double balance;
@@ -23,10 +15,12 @@ class BalanceCard extends StatelessWidget {
     this.lastPayment,
   });
 
-  Color _balanceColor(AppStatusColors st) {
+  // Цвет суммы баланса ПОВЕРХ бренд-градиента. Положительный — белый (onBg,
+  // контраст на зелёном фоне); долг/низкий — жёлтый/красный акцент (виден).
+  Color _balanceColor(AppStatusColors st, Color onBg) {
     if (balance < 0) return st.danger;
     if (balance < 100) return st.warning;
-    return st.success;
+    return onBg;
   }
 
   @override
@@ -34,21 +28,37 @@ class BalanceCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final st = AppStatusColors.of(context);
 
+    // Бренд-градиент темы вместо внешней картинки (раньше грузилась из GCS,
+    // который заморожен → фон не открывался). Текст поверх — onPrimary.
+    final onBg = colorScheme.onPrimary;
     return Card(
       elevation: 4,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: NetworkImage(_bgUrls[balance.hashCode.abs() % _bgUrls.length]),
-            fit: BoxFit.cover,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    colorScheme.primary,
+                    Color.alphaBlend(
+                      Colors.black.withValues(alpha: 0.18),
+                      colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Top row: "Баланс" + status badge
@@ -58,7 +68,7 @@ class BalanceCard extends StatelessWidget {
                 Text(
                   'Баланс',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: colorScheme.onPrimaryContainer,
+                        color: onBg,
                       ),
                 ),
                 Container(
@@ -96,12 +106,41 @@ class BalanceCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text(
-              '${balance.toStringAsFixed(2)} \u20BD',
-              style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: _balanceColor(st),
+            // build 1039: \u043D\u0435-\u0446\u0432\u0435\u0442\u043E\u0432\u043E\u0439 \u0441\u0438\u0433\u043D\u0430\u043B \u0441\u0442\u0430\u0442\u0443\u0441\u0430 \u0431\u0430\u043B\u0430\u043D\u0441\u0430 (\u0434\u043B\u044F \u0434\u0430\u043B\u044C\u0442\u043E\u043D\u0438\u043A\u043E\u0432)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    '${balance.toStringAsFixed(2)} \u20BD',
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: _balanceColor(st, onBg),
+                        ),
                   ),
+                ),
+                if (balance < 0) ...[
+                  const SizedBox(width: 6),
+                  Icon(Icons.arrow_downward,
+                      size: 22, color: _balanceColor(st, onBg)),
+                  const SizedBox(width: 2),
+                  Text('\u0434\u043E\u043B\u0433',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _balanceColor(st, onBg))),
+                ] else if (balance < 100) ...[
+                  const SizedBox(width: 6),
+                  Icon(Icons.warning_amber_rounded,
+                      size: 20, color: _balanceColor(st, onBg)),
+                  const SizedBox(width: 2),
+                  Text('\u043D\u0438\u0437\u043A\u0438\u0439 \u0431\u0430\u043B\u0430\u043D\u0441',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _balanceColor(st, onBg))),
+                ],
+              ],
             ),
             // Last payment
             if (lastPayment != null) ...[
@@ -109,25 +148,25 @@ class BalanceCard extends StatelessWidget {
               Row(
                 children: [
                   Icon(Icons.history, size: 14,
-                      color: colorScheme.onPrimaryContainer.withValues(alpha: 0.7)),
+                      color: onBg.withValues(alpha: 0.8)),
                   const SizedBox(width: 4),
                   Text(
                     'Последний платёж ',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
+                          color: onBg.withValues(alpha: 0.8),
                         ),
                   ),
                   Text(
                     '+${lastPayment!['amount']} \u20BD',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: st.success,
-                          fontWeight: FontWeight.w600,
+                          color: onBg,
+                          fontWeight: FontWeight.w700,
                         ),
                   ),
                   Text(
                     '  ${lastPayment!['date'] ?? ''}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
+                          color: onBg.withValues(alpha: 0.8),
                         ),
                   ),
                 ],
@@ -142,9 +181,11 @@ class BalanceCard extends StatelessWidget {
                 label: const Text('Пополнить'),
               ),
             ),
-          ],
-        ),
-      ),
+              ],
+            ),
+          ), // build 1039: закрытие inner Container
+        ], // build 1039: закрытие Stack children
+      ), // build 1039: закрытие Stack
     );
   }
 }

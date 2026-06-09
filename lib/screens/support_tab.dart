@@ -124,7 +124,20 @@ class _SupportTabState extends State<SupportTab>
                 color: Theme.of(context).colorScheme.outline),
             const SizedBox(height: 12),
             Text('Нет обращений',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            Text('Есть вопрос? Создайте обращение в поддержку',
+                textAlign: TextAlign.center,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 16),
+            FilledButton.tonalIcon(
+              onPressed: _createTicket,
+              icon: const Icon(Icons.add),
+              label: const Text('Новое обращение'),
+            ),
           ],
         ),
       );

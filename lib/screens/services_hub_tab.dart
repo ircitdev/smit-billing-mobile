@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/error_state.dart'; // build 1039: единый ErrorState
 import 'video_screen.dart';
 import 'services_tab.dart';
 import 'sessions_screen.dart';
@@ -17,6 +18,7 @@ class ServicesHubTab extends StatefulWidget {
 
 class _ServicesHubTabState extends State<ServicesHubTab> {
   bool _loading = true;
+  bool _error = false; // build 1039: отличаем «нет услуг» от «сеть упала»
   List<Map<String, dynamic>> _items = [];
 
   @override
@@ -26,7 +28,10 @@ class _ServicesHubTabState extends State<ServicesHubTab> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = false; // build 1039: сброс ошибки перед загрузкой
+    });
     try {
       final api = context.read<AuthProvider>().api;
       final data = await api.get('/account/services_menu');
@@ -37,10 +42,15 @@ class _ServicesHubTabState extends State<ServicesHubTab> {
             .where((e) => e['visible'] == true)
             .toList();
         _loading = false;
+        _error = false;
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() => _loading = false);
+      // build 1039: показываем ErrorState с retry вместо пустого состояния
+      setState(() {
+        _loading = false;
+        _error = true;
+      });
     }
   }
 
@@ -80,7 +90,21 @@ class _ServicesHubTabState extends State<ServicesHubTab> {
         onRefresh: _load,
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : _items.isEmpty
+            // build 1039: сеть упала → ErrorState с retry (не пустое состояние)
+            : _error
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.7,
+                        child: ErrorState(
+                          message: 'Не удалось загрузить услуги',
+                          onRetry: _load,
+                        ),
+                      ),
+                    ],
+                  )
+                : _items.isEmpty
                 ? ListView(children: [
                     const SizedBox(height: 160),
                     Center(
@@ -97,20 +121,61 @@ class _ServicesHubTabState extends State<ServicesHubTab> {
                   ])
                 : ListView(
                     padding: const EdgeInsets.all(16),
-                    children: _items.map((item) {
-                      final key = item['key'] as String;
-                      final m = _meta[key];
-                      if (m == null) return const SizedBox.shrink();
-                      final count = item['count'] as int?;
-                      return _ServiceCard(
-                        icon: m.$1,
-                        title: m.$2,
-                        subtitle: m.$3,
-                        badge: (count != null && count > 0) ? '$count' : null,
-                        onTap: () => _open(key),
-                      );
-                    }).toList(),
+                    children: _buildGrouped(context),
                   ),
+      ),
+    );
+  }
+
+  /// Группировка пунктов: «Мои услуги» (видео, доп.услуги) и
+  /// «Диагностика» (подключения, тест скорости).
+  List<Widget> _buildGrouped(BuildContext context) {
+    const servicesKeys = {'video', 'services'};
+    const diagKeys = {'sessions', 'speedtest'};
+
+    Widget? cardFor(String key) {
+      final item = _items.firstWhere(
+        (e) => e['key'] == key,
+        orElse: () => const {},
+      );
+      if (item.isEmpty) return null;
+      final m = _meta[key];
+      if (m == null) return null;
+      final count = item['count'] as int?;
+      return _ServiceCard(
+        icon: m.$1,
+        title: m.$2,
+        subtitle: m.$3,
+        badge: (count != null && count > 0) ? '$count' : null,
+        onTap: () => _open(key),
+      );
+    }
+
+    final out = <Widget>[];
+    final svc = servicesKeys.map(cardFor).whereType<Widget>().toList();
+    final diag = diagKeys.map(cardFor).whereType<Widget>().toList();
+
+    if (svc.isNotEmpty) {
+      out.add(_sectionHeader(context, 'Мои услуги'));
+      out.addAll(svc);
+    }
+    if (diag.isNotEmpty) {
+      if (out.isNotEmpty) out.add(const SizedBox(height: 8));
+      out.add(_sectionHeader(context, 'Диагностика'));
+      out.addAll(diag);
+    }
+    return out;
+  }
+
+  Widget _sectionHeader(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8, top: 4),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w700,
+            ),
       ),
     );
   }

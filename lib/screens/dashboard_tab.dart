@@ -5,6 +5,7 @@ import '../providers/account_provider.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_status_colors.dart';
 import '../widgets/balance_card.dart';
+import '../widgets/error_state.dart'; // build 1039: единый ErrorState
 import 'payment_screen.dart';
 import 'messages_screen.dart';
 
@@ -44,18 +45,18 @@ class DashboardTab extends StatelessWidget {
         child: account.isLoading && status == null
             ? const Center(child: CircularProgressIndicator())
             : status == null
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('Не удалось загрузить данные'),
-                        const SizedBox(height: 8),
-                        FilledButton(
-                          onPressed: () => account.loadStatus(),
-                          child: const Text('Повторить'),
+                // build 1039: единый ErrorState вместо самописного блока
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.7,
+                        child: ErrorState(
+                          message: 'Не удалось загрузить данные',
+                          onRetry: () => account.loadStatus(),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   )
                 : ListView(
                     padding: const EdgeInsets.all(16),
@@ -634,8 +635,11 @@ class _AlertsBannerState extends State<_AlertsBanner> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, size: 18),
-                    tooltip: 'Скрыть',
+                    tooltip: 'Скрыть уведомление',
                     visualDensity: VisualDensity.compact,
+                    // build 1039: тач-зона ≥48dp + понятный tooltip (a11y)
+                    constraints:
+                        const BoxConstraints(minWidth: 48, minHeight: 48),
                     onPressed: _dismissing.contains(a['id'])
                         ? null
                         : () => _dismiss(a['id'] as int),

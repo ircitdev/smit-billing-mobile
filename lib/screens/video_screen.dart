@@ -323,10 +323,11 @@ class _CameraChip extends StatelessWidget {
       );
     } else {
       final reason = !camera.active
-          ? 'Камера отключена'
-          : 'Просмотр недоступен (нет потока или объект заблокирован)';
+          ? 'Камера сейчас отключена'
+          : 'Просмотр сейчас недоступен. Если объект заблокирован за неоплату — '
+              'пополните счёт, либо обратитесь в поддержку.';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(reason), duration: const Duration(seconds: 2)),
+        SnackBar(content: Text(reason), duration: const Duration(seconds: 3)),
       );
     }
   }
@@ -343,6 +344,8 @@ class _CameraChip extends StatelessWidget {
           '${_viewable ? "смотреть" : (camera.active ? "просмотр недоступен" : "отключена")}',
       child: ActionChip(
         visualDensity: VisualDensity.compact,
+        // build 1039: тач-зона ≥48dp у Chip через materialTapTargetSize
+        materialTapTargetSize: MaterialTapTargetSize.padded,
         onPressed: () => _open(context),
         avatar: Icon(
           _viewable

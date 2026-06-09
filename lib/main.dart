@@ -42,7 +42,7 @@ class SmitBillingApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(
-                seedColor: const Color(0xFF5BA89D),
+                seedColor: const Color(0xFF43B77A),
                 brightness: Brightness.light,
               ),
               useMaterial3: true,
@@ -51,7 +51,7 @@ class SmitBillingApp extends StatelessWidget {
             ),
             darkTheme: ThemeData(
               colorScheme: ColorScheme.fromSeed(
-                seedColor: const Color(0xFF5BA89D),
+                seedColor: const Color(0xFF43B77A),
                 brightness: Brightness.dark,
               ),
               useMaterial3: true,

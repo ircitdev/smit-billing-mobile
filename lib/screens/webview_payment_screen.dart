@@ -127,7 +127,7 @@ class _WebViewPaymentScreenState extends State<WebViewPaymentScreen> {
     .spinner {
       width: 40px; height: 40px; margin: 0 auto 16px;
       border: 3px solid #e0e0e0;
-      border-top: 3px solid #5BA89D;
+      border-top: 3px solid #43b77a;
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }

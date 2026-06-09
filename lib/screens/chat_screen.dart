@@ -83,7 +83,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     if (_messages.isEmpty) {
       _messages.add(_ChatMsg(
-        text: 'Здравствуйте! Я AI-ассистент SmIT. 😊\nЧем могу помочь?',
+        text: 'Здравствуйте! Я AI-ассистент СмИТ. 😊\nЧем могу помочь?',
         isUser: false,
         time: DateTime.now(),
       ));
@@ -161,7 +161,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _saveHistory();
     } on ApiException catch (e) {
       setState(() {
-        _messages.add(_ChatMsg(text: 'Ошибка: ${e.message}', isUser: false, time: DateTime.now(), isError: true));
+        _messages.add(_ChatMsg(text: 'Не удалось получить ответ. Попробуйте ещё раз или напишите оператору.', isUser: false, time: DateTime.now(), isError: true));
       });
     } catch (_) {
       setState(() {
@@ -260,7 +260,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final st = AppStatusColors.of(context);
-    const green = Color(0xFF5BA89D);
+    final green = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       appBar: AppBar(
@@ -270,7 +270,7 @@ class _ChatScreenState extends State<ChatScreen> {
             CircleAvatar(
               radius: 18,
               backgroundColor: green.withValues(alpha: 0.15),
-              child: const Icon(Icons.smart_toy, size: 20, color: green),
+              child: Icon(Icons.smart_toy, size: 20, color: green),
             ),
             const SizedBox(width: 10),
             Column(
@@ -369,12 +369,18 @@ class _ChatScreenState extends State<ChatScreen> {
                   Material(
                     color: green,
                     shape: const CircleBorder(),
-                    child: InkWell(
-                      onTap: _sending ? null : _send,
-                      customBorder: const CircleBorder(),
-                      child: const Padding(
-                        padding: EdgeInsets.all(10),
-                        child: Icon(Icons.arrow_upward, color: Colors.white, size: 22),
+                    // build 1039: Semantics-лейбл на иконочную кнопку отправки
+                    child: Semantics(
+                      label: 'Отправить сообщение',
+                      button: true,
+                      child: InkWell(
+                        onTap: _sending ? null : _send,
+                        customBorder: const CircleBorder(),
+                        child: const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: Icon(Icons.arrow_upward,
+                              color: Colors.white, size: 22),
+                        ),
                       ),
                     ),
                   ),
@@ -393,7 +399,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final bgColor = msg.isError
         ? st.dangerContainer
         : isUser
-            ? const Color(0xFF5BA89D)
+            ? const Color(0xFF43B77A)
             : (isDark ? const Color(0xFF2A2E37) : const Color(0xFFE8E8ED));
     final textColor = msg.isError
         ? st.onDangerContainer

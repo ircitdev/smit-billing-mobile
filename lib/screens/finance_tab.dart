@@ -86,6 +86,7 @@ class _FinanceTabState extends State<FinanceTab> {
                     trailing: hasActive
                         ? TextButton(
                             onPressed: () async {
+                              // build 1039: отмена ОП только после подтверждения
                               final confirm = await showDialog<bool>(
                                 context: context,
                                 builder: (ctx) => AlertDialog(
@@ -199,7 +200,34 @@ class _FinanceTabState extends State<FinanceTab> {
                         onRetry: () => account.loadHistory(period: _period),
                       )
                     : account.history.isEmpty
-                    ? const Center(child: Text('Операций пока нет'))
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.receipt_long_outlined,
+                                size: 56, color: colorScheme.outline),
+                            const SizedBox(height: 12),
+                            Text('Операций пока нет',
+                                style: Theme.of(context).textTheme.titleMedium),
+                            const SizedBox(height: 8),
+                            Text('Пополните баланс, чтобы начать',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: colorScheme.onSurfaceVariant)),
+                            const SizedBox(height: 16),
+                            FilledButton.tonalIcon(
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const PaymentScreen()),
+                              ),
+                              icon: const Icon(Icons.add_card),
+                              label: const Text('Пополнить'),
+                            ),
+                          ],
+                        ),
+                      )
                     : RefreshIndicator(
                         onRefresh: () =>
                             account.loadHistory(period: _period),
