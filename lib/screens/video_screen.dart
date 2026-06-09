@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/video_object.dart';
+import '../services/api_client.dart';
 import 'payment_screen.dart';
 import 'video_player_screen.dart';
 
-/// Экран «Видеонаблюдение» (Фаза 6, mobile).
-/// Объекты абонента, камеры, подписки, статус проекта, баланс видео-счёта.
+/// Экран «Видеонаблюдение» (mobile).
+/// Превью камер с Play, условная кнопка «Пополнить», архив через WebView-мост.
 /// Источник: GET /mobile-api/v1/video/objects
 class VideoScreen extends StatefulWidget {
   const VideoScreen({super.key});
@@ -82,14 +83,19 @@ class _VideoScreenState extends State<VideoScreen> {
     }
     return ListView(
       padding: const EdgeInsets.all(16),
-      children: _objects.map((o) => _ObjectCard(object: o, onPay: () => _pay(o))).toList(),
+      children: _objects
+          .map((o) => _ObjectCard(
+                object: o,
+                onPay: () => _pay(o),
+                onArchiveSession: _openArchiveSession,
+              ))
+          .toList(),
     );
   }
 
   Future<void> _pay(VideoObjectModel o) async {
-    // Пополнение пока идёт на основной лицевой счёт (отдельное пополнение
-    // видео-счёта требует доработки платёжного шлюза). Честно предупреждаем,
-    // чтобы абонент не ждал, что деньги попадут именно на видео-счёт.
+    // При клике честно предупреждаем: видео может тарифицироваться с отдельного
+    // счёта, но процедура оплаты не отличается (как в ЛК).
     final go = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -97,7 +103,8 @@ class _VideoScreenState extends State<VideoScreen> {
         content: const Text(
           'Пополнение выполняется на основной лицевой счёт. '
           'Если видеонаблюдение тарифицируется с отдельного счёта, '
-          'для зачисления именно на него обратитесь в поддержку.',
+          'для зачисления именно на него обратитесь в поддержку. '
+          'В остальном процедура оплаты не отличается.',
         ),
         actions: [
           TextButton(
@@ -118,6 +125,36 @@ class _VideoScreenState extends State<VideoScreen> {
     );
   }
 
+  /// Открыть архив в WebView через мост JWT→сессия.
+  /// [cameraId] — таймлайн одной камеры; [objectId]+wall — мультикамера.
+  Future<void> _openArchiveSession({int? cameraId, int? objectId, bool wall = false, String title = 'Архив'}) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final api = context.read<AuthProvider>().api;
+      final body = wall
+          ? {'object_id': objectId, 'wall': true}
+          : {'camera_id': cameraId};
+      final res = await api.post('/video/archive/session', body);
+      if (res['ok'] != true || (res['url'] ?? '').toString().isEmpty) {
+        messenger.showSnackBar(SnackBar(
+            content: Text(res['error']?.toString() ?? 'Архив недоступен')));
+        return;
+      }
+      // baseUrl = https://rbill.smit34.ru/mobile-api/v1 → host для ЛК-страницы
+      final host = ApiClient.baseUrl.replaceFirst('/mobile-api/v1', '');
+      final url = '$host${res['url']}';
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => VideoPlayerScreen(streamUrl: url, title: title),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Ошибка архива: $e')));
+    }
+  }
+
   Widget _centered({
     required IconData icon,
     required String title,
@@ -126,7 +163,6 @@ class _VideoScreenState extends State<VideoScreen> {
   }) {
     final cs = Theme.of(context).colorScheme;
     return ListView(
-      // ListView, чтобы RefreshIndicator работал и на пустом состоянии
       children: [
         SizedBox(height: MediaQuery.of(context).size.height * 0.2),
         Icon(icon, size: 64, color: cs.outline),
@@ -161,14 +197,22 @@ class _VideoScreenState extends State<VideoScreen> {
 class _ObjectCard extends StatelessWidget {
   final VideoObjectModel object;
   final VoidCallback onPay;
+  final Future<void> Function({int? cameraId, int? objectId, bool wall, String title})
+      onArchiveSession;
 
-  const _ObjectCard({required this.object, required this.onPay});
+  const _ObjectCard({
+    required this.object,
+    required this.onPay,
+    required this.onArchiveSession,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final balance = object.accountBalance;
     final negative = balance != null && balance < 0;
+    final cams = object.cameras;
+    final twoCols = cams.length > 2;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
@@ -235,7 +279,7 @@ class _ObjectCard extends StatelessWidget {
 
             const Divider(height: 24),
 
-            // Камеры
+            // Камеры — превью-сетка с Play (по 2 в ряд если >2 камер)
             Row(
               children: [
                 Icon(Icons.camera_alt_outlined, size: 18, color: cs.primary),
@@ -244,13 +288,23 @@ class _ObjectCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodyMedium),
               ],
             ),
-            if (object.cameras.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: object.cameras
-                    .map((c) => _CameraChip(camera: c))
+            if (cams.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: twoCols ? 2 : 1,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: twoCols ? 1.35 : 1.9,
+                children: cams
+                    .map((c) => _CameraTile(
+                          camera: c,
+                          onArchive: c.hasArchive
+                              ? () => onArchiveSession(
+                                  cameraId: c.id, title: 'Архив: ${c.label}')
+                              : null,
+                        ))
                     .toList(),
               ),
             ],
@@ -272,7 +326,23 @@ class _ObjectCard extends StatelessWidget {
                   )),
             ],
 
-            // Баланс видео-счёта + кнопка пополнить
+            // Архив: подписка есть → кнопка «Смотреть все камеры»; нет → баннер
+            const SizedBox(height: 12),
+            if (object.hasSubscription && !object.camerasBlocked) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => onArchiveSession(
+                      objectId: object.id, wall: true, title: 'Архив — все камеры'),
+                  icon: const Icon(Icons.grid_view, size: 18),
+                  label: const Text('Смотреть архив всех камер'),
+                ),
+              ),
+            ] else if (!object.hasSubscription) ...[
+              _ArchivePromo(),
+            ],
+
+            // Баланс видео-счёта + условная кнопка «Пополнить»
             if (balance != null) ...[
               const Divider(height: 24),
               Row(
@@ -287,10 +357,12 @@ class _ObjectCard extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                           color: negative ? cs.error : cs.primary)),
                   const Spacer(),
-                  FilledButton.tonal(
-                    onPressed: onPay,
-                    child: const Text('Пополнить'),
-                  ),
+                  // Кнопка только если денег меньше месячного списания
+                  if (object.needTopup)
+                    FilledButton.tonal(
+                      onPressed: onPay,
+                      child: const Text('Пополнить'),
+                    ),
                 ],
               ),
             ],
@@ -301,16 +373,16 @@ class _ObjectCard extends StatelessWidget {
   }
 }
 
-/// Чип камеры. Если поток доступен (canView + streamUrl) — кликабелен,
-/// открывает WebRTC-плеер go2rtc. Иначе показывает причину недоступности.
-class _CameraChip extends StatelessWidget {
+/// Плитка камеры с превью (snapshot из ЛК-прокси) и наложенной Play.
+class _CameraTile extends StatelessWidget {
   final VideoCameraModel camera;
+  final VoidCallback? onArchive;
 
-  const _CameraChip({required this.camera});
+  const _CameraTile({required this.camera, this.onArchive});
 
   bool get _viewable => camera.canView && camera.streamUrl.isNotEmpty;
 
-  void _open(BuildContext context) {
+  void _play(BuildContext context) {
     if (_viewable) {
       Navigator.push(
         context,
@@ -335,29 +407,159 @@ class _CameraChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final color = _viewable
-        ? cs.primary
-        : (camera.active ? cs.outline : cs.outline);
-    return Semantics(
-      button: true,
-      label: '${camera.label}: '
-          '${_viewable ? "смотреть" : (camera.active ? "просмотр недоступен" : "отключена")}',
-      child: ActionChip(
-        visualDensity: VisualDensity.compact,
-        // build 1039: тач-зона ≥48dp у Chip через materialTapTargetSize
-        materialTapTargetSize: MaterialTapTargetSize.padded,
-        onPressed: () => _open(context),
-        avatar: Icon(
-          _viewable
-              ? Icons.play_circle_fill
-              : (camera.active ? Icons.videocam_off : Icons.block),
-          size: 16,
-          color: color,
+    // превью-кадр через ЛК-прокси (go2rtc snapshot). Доступно при canView.
+    final previewUrl = _viewable
+        ? '${ApiClient.baseUrl.replaceFirst('/mobile-api/v1', '')}/lk/video/preview/${camera.id}/'
+        : null;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: cs.outlineVariant),
+          borderRadius: BorderRadius.circular(10),
         ),
-        label: Text(camera.label, style: const TextStyle(fontSize: 12)),
-        side: _viewable
-            ? BorderSide(color: cs.primary.withValues(alpha: 0.5))
-            : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(color: Colors.black),
+                  if (previewUrl != null)
+                    Image.network(
+                      previewUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          Icon(Icons.videocam, color: cs.outline, size: 28),
+                      loadingBuilder: (ctx, child, prog) =>
+                          prog == null ? child : const Center(
+                              child: SizedBox(
+                                  width: 22, height: 22,
+                                  child: CircularProgressIndicator(strokeWidth: 2))),
+                    )
+                  else
+                    Center(
+                        child: Icon(
+                            camera.active ? Icons.videocam_off : Icons.block,
+                            color: cs.outline, size: 28)),
+                  // Play overlay
+                  if (_viewable)
+                    Center(
+                      child: Material(
+                        color: cs.primary.withValues(alpha: 0.92),
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () => _play(context),
+                          child: const Padding(
+                            padding: EdgeInsets.all(10),
+                            child: Icon(Icons.play_arrow, color: Colors.white, size: 26),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (!camera.active)
+                    Positioned(
+                      top: 6, left: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text('Выкл.',
+                            style: TextStyle(color: Colors.white, fontSize: 11)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // подпись + кнопка архива
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      camera.resolution.isNotEmpty
+                          ? '${camera.label} · ${camera.resolution}'
+                          : camera.label,
+                      style: const TextStyle(fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (onArchive != null)
+                    InkWell(
+                      onTap: onArchive,
+                      child: Padding(
+                        padding: const EdgeInsets.all(2),
+                        child: Icon(Icons.history, size: 18, color: cs.primary),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Баннер преимуществ архива (когда нет подписки) + переход к заказу.
+class _ArchivePromo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    Widget item(String t) => Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.check_circle, size: 16, color: cs.primary),
+              const SizedBox(width: 6),
+              Expanded(child: Text(t, style: const TextStyle(fontSize: 13))),
+            ],
+          ),
+        );
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cs.primaryContainer.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.history, color: cs.primary, size: 20),
+              const SizedBox(width: 6),
+              const Text('Архив видеозаписей',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          item('Записи хранятся до 30 дней — пересмотрите любой момент'),
+          item('Таймлайн по дням, перемотка по времени'),
+          item('Выгрузка фрагмента в один клик'),
+          item('Доступ из приложения и личного кабинета'),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text(
+                    'Заявка на подключение архива — напишите в поддержку.')),
+              ),
+              icon: const Icon(Icons.bolt, size: 18),
+              label: const Text('Подключить архив'),
+            ),
+          ),
+        ],
       ),
     );
   }

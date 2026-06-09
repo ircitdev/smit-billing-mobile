@@ -9,6 +9,7 @@ class VideoCameraModel {
   final bool isOutdoor;
   final bool isPtz;
   final bool canView;
+  final bool hasArchive;
   final String streamUrl;
 
   VideoCameraModel({
@@ -20,6 +21,7 @@ class VideoCameraModel {
     required this.isOutdoor,
     required this.isPtz,
     required this.canView,
+    required this.hasArchive,
     required this.streamUrl,
   });
 
@@ -32,6 +34,7 @@ class VideoCameraModel {
         isOutdoor: j['is_outdoor'] ?? false,
         isPtz: j['is_ptz'] ?? false,
         canView: j['can_view'] ?? false,
+        hasArchive: j['has_archive'] ?? false,
         streamUrl: j['stream_url'] ?? '',
       );
 }
@@ -66,6 +69,8 @@ class VideoObjectModel {
   final bool camerasBlocked;
   final int camerasCount;
   final double monthly;
+  final bool needTopup;
+  final bool hasSubscription;
   final double? accountBalance;
   final String? projectTitle;
   final String? projectStatus;
@@ -80,6 +85,8 @@ class VideoObjectModel {
     required this.camerasBlocked,
     required this.camerasCount,
     required this.monthly,
+    required this.needTopup,
+    required this.hasSubscription,
     required this.accountBalance,
     required this.projectTitle,
     required this.projectStatus,
@@ -97,6 +104,8 @@ class VideoObjectModel {
       camerasBlocked: j['cameras_blocked'] ?? false,
       camerasCount: j['cameras_count'] ?? 0,
       monthly: (j['monthly'] ?? 0).toDouble(),
+      needTopup: j['need_topup'] ?? false,
+      hasSubscription: j['has_subscription'] ?? false,
       accountBalance:
           j['account_balance'] == null ? null : (j['account_balance']).toDouble(),
       projectTitle: proj != null ? proj['title'] : null,
