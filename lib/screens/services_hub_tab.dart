@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/error_state.dart'; // build 1039: единый ErrorState
 import 'video_screen.dart';
+import 'iptv_screen.dart';
 import 'services_tab.dart';
 import 'sessions_screen.dart';
 import 'speedtest_screen.dart';
@@ -60,6 +61,9 @@ class _ServicesHubTabState extends State<ServicesHubTab> {
       case 'video':
         screen = const VideoScreen();
         break;
+      case 'iptv':
+        screen = const IptvScreen();
+        break;
       case 'services':
         screen = const ServicesTab();
         break;
@@ -77,6 +81,7 @@ class _ServicesHubTabState extends State<ServicesHubTab> {
 
   static const _meta = {
     'video': (Icons.videocam, 'Видеонаблюдение', 'Камеры, подписки, видео-счёт'),
+    'iptv': (Icons.live_tv, 'Интерактивное ТВ', 'Пакеты каналов и просмотр'),
     'services': (Icons.layers_outlined, 'Дополнительные услуги', 'Тарифы и подключённые услуги'),
     'sessions': (Icons.wifi, 'Подключения', 'История сессий и трафик'),
     'speedtest': (Icons.speed, 'Тест скорости', 'Измерить скорость интернета'),
@@ -130,7 +135,7 @@ class _ServicesHubTabState extends State<ServicesHubTab> {
   /// Группировка пунктов: «Мои услуги» (видео, доп.услуги) и
   /// «Диагностика» (подключения, тест скорости).
   List<Widget> _buildGrouped(BuildContext context) {
-    const servicesKeys = {'video', 'services'};
+    const servicesKeys = {'video', 'iptv', 'services'};
     const diagKeys = {'sessions', 'speedtest'};
 
     Widget? cardFor(String key) {
