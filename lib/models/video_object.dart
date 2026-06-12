@@ -11,6 +11,7 @@ class VideoCameraModel {
   final bool canView;
   final bool hasArchive;
   final String streamUrl;
+  final String hlsUrl;  // build 1074: нативный HLS-поток live (без WebView)
 
   VideoCameraModel({
     required this.id,
@@ -23,6 +24,7 @@ class VideoCameraModel {
     required this.canView,
     required this.hasArchive,
     required this.streamUrl,
+    this.hlsUrl = '',
   });
 
   factory VideoCameraModel.fromJson(Map<String, dynamic> j) => VideoCameraModel(
@@ -36,6 +38,7 @@ class VideoCameraModel {
         canView: j['can_view'] ?? false,
         hasArchive: j['has_archive'] ?? false,
         streamUrl: j['stream_url'] ?? '',
+        hlsUrl: j['hls_url'] ?? '',
       );
 }
 

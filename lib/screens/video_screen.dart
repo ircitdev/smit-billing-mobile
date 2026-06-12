@@ -5,9 +5,10 @@ import '../models/video_object.dart';
 import '../services/api_client.dart';
 import 'payment_screen.dart';
 import 'video_player_screen.dart';
+import 'video_archive_screen.dart';
 
 /// Экран «Видеонаблюдение» (mobile).
-/// Превью камер с Play, условная кнопка «Пополнить», архив через WebView-мост.
+/// Превью камер с Play, условная кнопка «Пополнить», нативный архив (build 1074).
 /// Источник: GET /mobile-api/v1/video/objects
 class VideoScreen extends StatefulWidget {
   const VideoScreen({super.key});
@@ -87,7 +88,10 @@ class _VideoScreenState extends State<VideoScreen> {
           .map((o) => _ObjectCard(
                 object: o,
                 onPay: () => _pay(o),
-                onArchiveSession: _openArchiveSession,
+                onArchiveCamera: (camId, title) =>
+                    _openArchive(o, startCameraId: camId, title: title),
+                onArchiveWall: () =>
+                    _openArchive(o, title: 'Архив — все камеры'),
               ))
           .toList(),
     );
@@ -125,34 +129,31 @@ class _VideoScreenState extends State<VideoScreen> {
     );
   }
 
-  /// Открыть архив в WebView через мост JWT→сессия.
-  /// [cameraId] — таймлайн одной камеры; [objectId]+wall — мультикамера.
-  Future<void> _openArchiveSession({int? cameraId, int? objectId, bool wall = false, String title = 'Архив'}) async {
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final api = context.read<AuthProvider>().api;
-      final body = wall
-          ? {'object_id': objectId, 'wall': true}
-          : {'camera_id': cameraId};
-      final res = await api.post('/video/archive/session', body);
-      if (res['ok'] != true || (res['url'] ?? '').toString().isEmpty) {
-        messenger.showSnackBar(SnackBar(
-            content: Text(res['error']?.toString() ?? 'Архив недоступен')));
-        return;
-      }
-      // baseUrl = https://rbill.smit34.ru/mobile-api/v1 → host для ЛК-страницы
-      final host = ApiClient.baseUrl.replaceFirst('/mobile-api/v1', '');
-      final url = '$host${res['url']}';
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VideoPlayerScreen(streamUrl: url, title: title),
-        ),
+  /// build 1074: нативный архив (без WebView). Открывает VideoArchiveScreen.
+  /// [object] — для селектора камер (все archive-камеры объекта).
+  /// [startCameraId] — какую камеру открыть первой (для per-camera кнопки).
+  void _openArchive(VideoObjectModel object, {int? startCameraId, String title = 'Архив'}) {
+    final archCams = object.cameras
+        .where((c) => c.hasArchive)
+        .map((c) => ArchiveCameraRef(c.id, c.label))
+        .toList();
+    if (archCams.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Нет камер с записью архива')),
       );
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Ошибка архива: $e')));
+      return;
     }
+    final camId = startCameraId ?? archCams.first.id;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VideoArchiveScreen(
+          cameraId: camId,
+          title: title,
+          cameras: archCams,
+        ),
+      ),
+    );
   }
 
   Widget _centered({
@@ -197,13 +198,14 @@ class _VideoScreenState extends State<VideoScreen> {
 class _ObjectCard extends StatelessWidget {
   final VideoObjectModel object;
   final VoidCallback onPay;
-  final Future<void> Function({int? cameraId, int? objectId, bool wall, String title})
-      onArchiveSession;
+  final void Function(int cameraId, String title) onArchiveCamera;
+  final VoidCallback onArchiveWall;
 
   const _ObjectCard({
     required this.object,
     required this.onPay,
-    required this.onArchiveSession,
+    required this.onArchiveCamera,
+    required this.onArchiveWall,
   });
 
   @override
@@ -301,8 +303,7 @@ class _ObjectCard extends StatelessWidget {
                     .map((c) => _CameraTile(
                           camera: c,
                           onArchive: c.hasArchive
-                              ? () => onArchiveSession(
-                                  cameraId: c.id, title: 'Архив: ${c.label}')
+                              ? () => onArchiveCamera(c.id, 'Архив: ${c.label}')
                               : null,
                         ))
                     .toList(),
@@ -332,8 +333,7 @@ class _ObjectCard extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () => onArchiveSession(
-                      objectId: object.id, wall: true, title: 'Архив — все камеры'),
+                  onPressed: onArchiveWall,
                   icon: const Icon(Icons.grid_view, size: 18),
                   label: const Text('Смотреть архив всех камер'),
                 ),
@@ -380,7 +380,14 @@ class _CameraTile extends StatelessWidget {
 
   const _CameraTile({required this.camera, this.onArchive});
 
-  bool get _viewable => camera.canView && camera.streamUrl.isNotEmpty;
+  // build 1074: нативный HLS-плеер. Fallback: если hls_url пуст (старый сервер) —
+  // достаём m3u8 из stream_url (go2rtc public + src), либо считаем непросматриваемым.
+  String get _liveHls {
+    if (camera.hlsUrl.isNotEmpty) return camera.hlsUrl;
+    return '';
+  }
+
+  bool get _viewable => camera.canView && _liveHls.isNotEmpty;
 
   void _play(BuildContext context) {
     if (_viewable) {
@@ -388,7 +395,7 @@ class _CameraTile extends StatelessWidget {
         context,
         MaterialPageRoute(
           builder: (_) => VideoPlayerScreen(
-            streamUrl: camera.streamUrl,
+            hlsUrl: _liveHls,
             title: camera.label,
           ),
         ),

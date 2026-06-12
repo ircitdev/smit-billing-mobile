@@ -29,6 +29,13 @@ class ApiClient {
 
   bool get isAuthenticated => _accessToken != null;
 
+  /// build 1074: access-токен для проброса в video_player httpHeaders
+  /// (нативный плеер архива качает MP4 с mobile-api прокси под JWT).
+  Future<String?> accessTokenForMedia() async {
+    if (_accessToken == null) await loadTokens();
+    return _accessToken;
+  }
+
   Map<String, String> get _authHeaders => {
         'Content-Type': 'application/json',
         if (_accessToken != null) 'Authorization': 'Bearer $_accessToken',
