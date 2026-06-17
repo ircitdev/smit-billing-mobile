@@ -113,6 +113,37 @@ class ApiClient {
     throw ApiException(error['detail'] ?? 'Ошибка авторизации', resp.statusCode);
   }
 
+  /// Публичный GET без авторизации (branding / features / auth/methods).
+  Future<Map<String, dynamic>> getPublic(String path) async {
+    final resp = await http.get(
+      Uri.parse('$baseUrl$path'),
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (resp.statusCode == 200) {
+      return jsonDecode(resp.body) as Map<String, dynamic>;
+    }
+    throw ApiException(_parseError(resp.body), resp.statusCode);
+  }
+
+  /// Публичный POST без авторизации (OAuth login/link → выдаёт JWT).
+  /// При успешном входе (есть access/refresh) — сохраняет токены.
+  Future<Map<String, dynamic>> postPublic(
+      String path, Map<String, dynamic> body) async {
+    final resp = await http.post(
+      Uri.parse('$baseUrl$path'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      final data = jsonDecode(resp.body) as Map<String, dynamic>;
+      if (data['access'] != null && data['refresh'] != null) {
+        await saveTokens(data['access'], data['refresh']);
+      }
+      return data;
+    }
+    throw ApiException(_parseError(resp.body), resp.statusCode);
+  }
+
   // Возвращает dynamic: endpoint'ы отдают и объект ({...} — status), и массив
   // ([...] — tariffs / finance history). Жёсткий тип Map<String,dynamic> ронял
   // List-ответы в AOT-релизе → «Не удалось загрузить тарифы» (fix 2026-06-09).

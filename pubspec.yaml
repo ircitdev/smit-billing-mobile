@@ -2,7 +2,7 @@ name: smit_billing
 description: Мобильное приложение абонента СмИТ Биллинг
 publish_to: 'none'
 
-version: 1.3.13+41
+version: 1.4.0+42
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -29,6 +29,9 @@ dependencies:
   url_launcher: ^6.3.1
   # Sign in with Apple
   sign_in_with_apple: ^6.1.0
+  # OAuth (нативные способы входа из настроек ЛК)
+  google_sign_in: ^6.2.1
+  flutter_web_auth_2: ^4.1.0  # Yandex OAuth через системный браузер
   # WebView (payment screens)
   webview_flutter: ^4.10.0
   # Нативный видеоплеер — live (HLS) + архив (MP4), без WebView (build 1074)

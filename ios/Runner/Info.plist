@@ -55,12 +55,40 @@
 	<key>NSFaceIDUsageDescription</key>
 	<string>Используется для входа в приложение по Face ID</string>
 
+	<!-- URL schemes, которые обрабатывает приложение (OAuth callbacks) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<!-- Yandex / общий OAuth callback (flutter_web_auth_2): smitbilling://oauth -->
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>ru.smit34.smit_billing.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>smitbilling</string>
+			</array>
+		</dict>
+		<dict>
+			<!-- Google Sign-In (reversed iOS client ID из LK_GOOGLE_IOS_CLIENT_ID) -->
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>google-signin</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.254603607098-4donj4k355mrcelnt03cvvv9md56aae7</string>
+			</array>
+		</dict>
+	</array>
+
 	<!-- URLs opened by app (payment, OAuth) -->
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>https</string>
 		<string>tg</string>
 		<string>vk</string>
+		<string>googlegmail</string>
 	</array>
 
 	<!-- App Transport Security -->

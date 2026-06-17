@@ -156,6 +156,17 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Вызывается после успешного OAuth-входа (токены уже сохранены в ApiClient
+  /// внутри postPublic). Помечаем сессию активной и поднимаем push.
+  Future<void> finishOAuthLogin() async {
+    await api.loadTokens();
+    if (api.isAuthenticated) {
+      _isAuthenticated = true;
+      _initPush();
+      notifyListeners();
+    }
+  }
+
   Future<void> logout() async {
     await api.clearTokens();
     _isAuthenticated = false;

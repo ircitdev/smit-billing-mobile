@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
+  bool _userChose = false; // абонент явно выбрал тему
 
   ThemeMode get themeMode => _themeMode;
 
@@ -12,12 +13,27 @@ class ThemeProvider extends ChangeNotifier {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final mode = prefs.getString('theme_mode') ?? 'system';
-    _themeMode = _fromString(mode);
+    final mode = prefs.getString('theme_mode');
+    if (mode != null) {
+      _userChose = true;
+      _themeMode = _fromString(mode);
+    }
     notifyListeners();
   }
 
+  /// Применить серверный дефолт темы (MOBILE_DARK_THEME_DEFAULT),
+  /// только если абонент сам ещё не выбирал тему.
+  void applyServerDefault(bool darkDefault) {
+    if (_userChose) return;
+    final wanted = darkDefault ? ThemeMode.dark : ThemeMode.system;
+    if (_themeMode != wanted) {
+      _themeMode = wanted;
+      notifyListeners();
+    }
+  }
+
   Future<void> setThemeMode(ThemeMode mode) async {
+    _userChose = true;
     _themeMode = mode;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
