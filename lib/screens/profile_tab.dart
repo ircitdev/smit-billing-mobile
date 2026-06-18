@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -315,7 +317,9 @@ class _ProfileTabState extends State<ProfileTab> {
               child: ListTile(
                 leading: const Icon(Icons.star_outline, color: Colors.amber),
                 title: const Text('Оценить приложение'),
-                subtitle: const Text('Поставьте оценку в Google Play'),
+                subtitle: Text(Platform.isIOS
+                    ? 'Поставьте оценку в App Store'
+                    : 'Поставьте оценку в Google Play'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => ReviewService.openStoreListing(),
               ),
