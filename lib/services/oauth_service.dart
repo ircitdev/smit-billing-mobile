@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:math';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
@@ -105,23 +107,39 @@ class OAuthService {
     if (clientId.isEmpty) {
       return const OAuthResult(message: 'Яндекс не настроен');
     }
+    // CSRF-защита: случайный state в запросе сверяем с возвратом. Без него
+    // стороннее приложение, перехватившее smitbilling://, могло бы подсунуть
+    // свой токен (custom-scheme не эксклюзивен).
+    final state = _randomState();
     final authUrl = Uri.https('oauth.yandex.ru', '/authorize', {
       'response_type': 'token',
       'client_id': clientId,
       'redirect_uri': 'smitbilling://oauth',
       'force_confirm': 'yes',
+      'state': state,
     });
     final result = await FlutterWebAuth2.authenticate(
       url: authUrl.toString(),
       callbackUrlScheme: 'smitbilling',
     );
-    // implicit-flow возвращает токен во фрагменте: smitbilling://oauth#access_token=...
+    // implicit-flow возвращает во фрагменте: smitbilling://oauth#access_token=...&state=...
+    final returnedState = _extractFragmentParam(result, 'state');
+    if (returnedState != state) {
+      return const OAuthResult(message: 'Ошибка безопасности входа (state)');
+    }
     final token = _extractFragmentParam(result, 'access_token');
     if (token == null) {
       return const OAuthResult(message: 'Яндекс не вернул токен');
     }
     return _sendToken('/auth/yandex', {'access_token': token},
         link: {'provider': 'yandex', 'access_token': token});
+  }
+
+  /// Случайный непредсказуемый state для OAuth (CSRF-токен).
+  String _randomState() {
+    final rnd = Random.secure();
+    final bytes = List<int>.generate(24, (_) => rnd.nextInt(256));
+    return base64Url.encode(bytes).replaceAll('=', '');
   }
 
   /// Общий обработчик ответа `/auth/{provider}`: либо JWT, либо needs_linking.

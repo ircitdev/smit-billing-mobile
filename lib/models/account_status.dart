@@ -47,7 +47,7 @@ class AccountStatus {
 
   factory AccountStatus.fromJson(Map<String, dynamic> json) {
     return AccountStatus(
-      abonentId: json['abonent_id'],
+      abonentId: _asInt(json['abonent_id']),
       name: json['name'] ?? '',
       contractNumber: json['contract_number'] ?? '',
       balance: double.tryParse(json['balance']?.toString() ?? '0') ?? 0,
@@ -69,5 +69,12 @@ class AccountStatus {
       paymentSystemName: json['payment_system']?['name'],
       paymentSystemLabel: json['payment_system']?['label'],
     );
+  }
+
+  /// Безопасное приведение к int: переживает null / строку / double из JSON.
+  static int _asInt(dynamic v) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v?.toString() ?? '') ?? 0;
   }
 }

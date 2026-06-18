@@ -135,9 +135,11 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       await api.login(contract, password);
-      // Save credentials for biometric re-auth
-      await _storage.write(key: 'saved_contract', value: contract);
-      await _storage.write(key: 'saved_password', value: password);
+      // Биометрия повторно использует сохранённый JWT (api.loadTokens),
+      // поэтому хранить логин/пароль в открытом виде не нужно (убрано —
+      // лишняя поверхность атаки). Подчищаем legacy-записи на всякий случай.
+      await _storage.delete(key: 'saved_contract');
+      await _storage.delete(key: 'saved_password');
       _isAuthenticated = true;
       _isLoading = false;
       _initPush();

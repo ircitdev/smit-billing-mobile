@@ -19,7 +19,7 @@ class Tariff {
 
   factory Tariff.fromJson(Map<String, dynamic> json) {
     return Tariff(
-      id: json['id'],
+      id: _asInt(json['id']),
       name: json['name'] ?? '',
       monthlyCost: double.tryParse(json['monthly_cost']?.toString() ?? '0') ?? 0,
       speedMbit: json['speed_mbit'],
@@ -27,5 +27,12 @@ class Tariff {
       isCurrent: json['is_current'] ?? false,
       canSwitch: json['can_switch'] ?? false,
     );
+  }
+
+  /// Безопасное приведение к int: переживает null / строку / double из JSON.
+  static int _asInt(dynamic v) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v?.toString() ?? '') ?? 0;
   }
 }

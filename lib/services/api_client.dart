@@ -24,7 +24,9 @@ class ApiClient {
   Future<void> clearTokens() async {
     _accessToken = null;
     _refreshToken = null;
-    await _storage.deleteAll();
+    // Точечно удаляем только токены — не трогаем настройки биометрии и т.п.
+    await _storage.delete(key: 'access_token');
+    await _storage.delete(key: 'refresh_token');
   }
 
   bool get isAuthenticated => _accessToken != null;
