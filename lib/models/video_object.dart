@@ -79,6 +79,7 @@ class VideoObjectModel {
   final String? projectStatus;
   final List<VideoCameraModel> cameras;
   final List<VideoSubscriptionModel> subscriptions;
+  final bool hasEvents; // камеры шлют события или они уже были (вкладка «События»)
 
   VideoObjectModel({
     required this.id,
@@ -95,6 +96,7 @@ class VideoObjectModel {
     required this.projectStatus,
     required this.cameras,
     required this.subscriptions,
+    this.hasEvents = false,
   });
 
   factory VideoObjectModel.fromJson(Map<String, dynamic> j) {
@@ -119,6 +121,7 @@ class VideoObjectModel {
       subscriptions: ((j['subscriptions'] ?? []) as List)
           .map((e) => VideoSubscriptionModel.fromJson(e))
           .toList(),
+      hasEvents: j['has_events'] ?? false,
     );
   }
 }

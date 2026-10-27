@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/account_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/config_provider.dart';
 import '../theme/app_status_colors.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/error_state.dart'; // build 1039: единый ErrorState
@@ -16,6 +17,20 @@ String _fmtDate(String dateStr) {
   } catch (_) {
     return dateStr;
   }
+}
+
+const _monthsGen = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+];
+
+/// «1 сентября» — дата следующего списания абонплаты (1-е число след. месяца)
+String _nextChargeDate() {
+  final now = DateTime.now();
+  final next = (now.month == 12)
+      ? DateTime(now.year + 1, 1, 1)
+      : DateTime(now.year, now.month + 1, 1);
+  return '1 ${_monthsGen[next.month - 1]}';
 }
 
 /// Ключ баннера уведомлений — чтобы pull-to-refresh дашборда мог его обновить.
@@ -34,7 +49,7 @@ class DashboardTab extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Главная'),
+        title: Text(context.watch<ConfigProvider>().brandName),
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -206,6 +221,55 @@ class DashboardTab extends StatelessWidget {
                                     color: colorScheme.onSurfaceVariant,
                                   ),
                                 ),
+                                // Следующее списание (Mobbin: Cleo next-payment card)
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.primaryContainer
+                                        .withValues(alpha: 0.35),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.event_repeat,
+                                          size: 18, color: colorScheme.primary),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Следующее списание ${_nextChargeDate()} — ~${status.monthlyCost.toStringAsFixed(0)} \u20BD',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                  fontWeight: FontWeight.w500),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (status.balanceUntilDate != null &&
+                                    status.balanceUntilDate!.isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.hourglass_bottom,
+                                          size: 15,
+                                          color: colorScheme.onSurfaceVariant),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Баланса хватит до ${_fmtDate(status.balanceUntilDate!)}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                                color: colorScheme
+                                                    .onSurfaceVariant),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ],
                               // Balance sparkline
                               if (account.history.isNotEmpty) ...[

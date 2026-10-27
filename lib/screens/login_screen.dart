@@ -91,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _browserSocial(AuthProviderInfo p) async {
     Uri? uri;
     if (p.code == 'vk') {
-      uri = Uri.parse('${ApiClient.baseUrl.replaceFirst('/mobile-api/v1', '')}/lk/auth/vk/');
+      uri = Uri.parse('${ApiClient.origin}/lk/auth/vk/');
     } else if (p.code == 'telegram') {
       final cfg = context.read<ConfigProvider>();
       final bot = cfg.oauthValue('telegram', 'bot_username');
@@ -283,6 +283,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                     ),
                     const SizedBox(height: 28),
+                    if (ApiClient.isDemo) ...[
+                      _DemoHint(onFill: () {
+                        _contractController.text = 'demo';
+                        _passwordController.text = 'demo';
+                        _login();
+                      }),
+                      const SizedBox(height: 18),
+                    ],
                     TextField(
                       controller: _contractController,
                       keyboardType: cfg.loginByEmail
@@ -387,6 +395,49 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Демо-приложение: подсказка с общим входом и кнопка «войти в одно касание».
+class _DemoHint extends StatelessWidget {
+  final VoidCallback onFill;
+
+  const _DemoHint({required this.onFill});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cs.primary.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.primary.withOpacity(0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.info_outline, size: 18, color: cs.primary),
+            const SizedBox(width: 8),
+            Text('Демо-версия',
+                style: TextStyle(fontWeight: FontWeight.w700, color: cs.primary)),
+          ]),
+          const SizedBox(height: 6),
+          const Text('Данные вымышленные. Вход: логин demo, пароль demo.'),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onFill,
+              icon: const Icon(Icons.play_arrow_rounded),
+              label: const Text('Войти в демо'),
+            ),
+          ),
+        ],
       ),
     );
   }

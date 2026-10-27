@@ -3,7 +3,15 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiClient {
-  static const String baseUrl = 'https://rbill.smit34.ru/mobile-api/v1';
+  // Production-сервер rbill. Демо-приложение собирается с
+  // --dart-define=API_BASE=https://lk.capitraff.ru/mobile-api/v1 --dart-define=DEMO=true
+  static const String baseUrl = String.fromEnvironment('API_BASE',
+      defaultValue: 'https://rbill.smit34.ru/mobile-api/v1');
+  static const bool isDemo = bool.fromEnvironment('DEMO');
+  static String get origin => baseUrl.replaceFirst('/mobile-api/v1', '');
+
+  /// Ссылки с сервера бывают относительными (/media/...) — достраиваем от адреса сервера.
+  static String absUrl(String url) => url.startsWith('/') ? '$origin$url' : url;
   final _storage = const FlutterSecureStorage();
 
   String? _accessToken;

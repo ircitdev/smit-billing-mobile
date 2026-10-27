@@ -6,6 +6,8 @@ import '../services/api_client.dart';
 import 'payment_screen.dart';
 import 'video_player_screen.dart';
 import 'video_archive_screen.dart';
+import 'video_events_screen.dart';
+import 'camera_events_screen.dart';
 
 /// Экран «Видеонаблюдение» (mobile).
 /// Превью камер с Play, условная кнопка «Пополнить», нативный архив (build 1074).
@@ -21,6 +23,7 @@ class _VideoScreenState extends State<VideoScreen> {
   bool _loading = true;
   String? _error;
   List<VideoObjectModel> _objects = [];
+  String? _token; // для превью камер (кадр по JWT)
 
   @override
   void initState() {
@@ -36,6 +39,7 @@ class _VideoScreenState extends State<VideoScreen> {
     try {
       final api = context.read<AuthProvider>().api;
       final data = await api.get('/video/objects');
+      _token = await api.accessTokenForMedia(); // после запроса — токен мог обновиться
       final items = ((data['items'] ?? []) as List)
           .map((e) => VideoObjectModel.fromJson(e))
           .toList();
@@ -87,11 +91,16 @@ class _VideoScreenState extends State<VideoScreen> {
       children: _objects
           .map((o) => _ObjectCard(
                 object: o,
+                token: _token,
                 onPay: () => _pay(o),
                 onArchiveCamera: (camId, title) =>
                     _openArchive(o, startCameraId: camId, title: title),
                 onArchiveWall: () =>
                     _openArchive(o, title: 'Архив — все камеры'),
+                onEvents: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => VideoEventsScreen(object: o))),
+                onCameraEvents: (cam) => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => CameraEventsScreen(object: o, camera: cam))),
               ))
           .toList(),
     );
@@ -197,15 +206,21 @@ class _VideoScreenState extends State<VideoScreen> {
 
 class _ObjectCard extends StatelessWidget {
   final VideoObjectModel object;
+  final String? token;
   final VoidCallback onPay;
   final void Function(int cameraId, String title) onArchiveCamera;
   final VoidCallback onArchiveWall;
+  final VoidCallback onEvents;
+  final void Function(VideoCameraModel camera) onCameraEvents;
 
   const _ObjectCard({
     required this.object,
+    this.token,
     required this.onPay,
     required this.onArchiveCamera,
     required this.onArchiveWall,
+    required this.onEvents,
+    required this.onCameraEvents,
   });
 
   @override
@@ -302,8 +317,12 @@ class _ObjectCard extends StatelessWidget {
                 children: cams
                     .map((c) => _CameraTile(
                           camera: c,
+                          token: token,
                           onArchive: c.hasArchive
                               ? () => onArchiveCamera(c.id, 'Архив: ${c.label}')
+                              : null,
+                          onEvents: c.active && !object.camerasBlocked
+                              ? () => onCameraEvents(c)
                               : null,
                         ))
                     .toList(),
@@ -325,6 +344,19 @@ class _ObjectCard extends StatelessWidget {
                       ],
                     ),
                   )),
+            ],
+
+            // События камер — лента с кадрами и фильтрами
+            if (object.hasEvents) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  onPressed: onEvents,
+                  icon: const Icon(Icons.notifications_outlined, size: 18),
+                  label: const Text('События камер'),
+                ),
+              ),
             ],
 
             // Архив: подписка есть → кнопка «Смотреть все камеры»; нет → баннер
@@ -377,8 +409,10 @@ class _ObjectCard extends StatelessWidget {
 class _CameraTile extends StatelessWidget {
   final VideoCameraModel camera;
   final VoidCallback? onArchive;
+  final VoidCallback? onEvents;
+  final String? token;
 
-  const _CameraTile({required this.camera, this.onArchive});
+  const _CameraTile({required this.camera, this.onArchive, this.onEvents, this.token});
 
   // build 1074: нативный HLS-плеер. Fallback: если hls_url пуст (старый сервер) —
   // достаём m3u8 из stream_url (go2rtc public + src), либо считаем непросматриваемым.
@@ -414,9 +448,9 @@ class _CameraTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    // превью-кадр через ЛК-прокси (go2rtc snapshot). Доступно при canView.
+    // build 3662: превью-кадр по JWT (страница ЛК /lk/video/preview/ требовала входа через браузер)
     final previewUrl = _viewable
-        ? '${ApiClient.baseUrl.replaceFirst('/mobile-api/v1', '')}/lk/video/preview/${camera.id}/'
+        ? '${ApiClient.baseUrl}/video/cameras/${camera.id}/preview'
         : null;
 
     return ClipRRect(
@@ -437,6 +471,7 @@ class _CameraTile extends StatelessWidget {
                   if (previewUrl != null)
                     Image.network(
                       previewUrl,
+                      headers: token != null ? {'Authorization': 'Bearer $token'} : null,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) =>
                           Icon(Icons.videocam, color: cs.outline, size: 28),
@@ -497,6 +532,14 @@ class _CameraTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (onEvents != null)
+                    InkWell(
+                      onTap: onEvents,
+                      child: Padding(
+                        padding: const EdgeInsets.all(2),
+                        child: Icon(Icons.notifications_outlined, size: 18, color: cs.primary),
+                      ),
+                    ),
                   if (onArchive != null)
                     InkWell(
                       onTap: onArchive,

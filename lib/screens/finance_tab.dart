@@ -6,6 +6,14 @@ import '../theme/app_status_colors.dart';
 import '../widgets/error_state.dart';
 import 'payment_screen.dart';
 
+/// «2026-10-17T11:29:01.63» → «17.10.2026 11:29»
+String _fmtDateTime(dynamic v) {
+  final dt = DateTime.tryParse('${v ?? ''}');
+  if (dt == null) return '${v ?? ''}';
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${two(dt.day)}.${two(dt.month)}.${dt.year} ${two(dt.hour)}:${two(dt.minute)}';
+}
+
 class FinanceTab extends StatefulWidget {
   const FinanceTab({super.key});
 
@@ -81,7 +89,7 @@ class _FinanceTabState extends State<FinanceTab> {
                         ? 'Обещанный платёж активен'
                         : 'Обещанный платёж'),
                     subtitle: Text(hasActive
-                        ? 'До: ${pp['end_date'] ?? ''}'
+                        ? 'До ${_fmtDateTime(pp['end_date'])}'
                         : '5 дней, 30 \u20BD/день'),
                     trailing: hasActive
                         ? TextButton(

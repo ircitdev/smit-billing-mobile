@@ -18,7 +18,12 @@ class FinanceOperation {
       id: json['id'],
       date: json['date'] ?? '',
       amount: double.tryParse(json['amount']?.toString() ?? '0') ?? 0,
-      description: json['description'] ?? '',
+      // служебные метки сверки ([ebs:tx_id=…], (uu_id=…)) абоненту не нужны
+      description: (json['description'] ?? '')
+          .toString()
+          .replaceAll(RegExp(r'\s*\[ebs:[^\]]*\]'), '')
+          .replaceAll(RegExp(r'\s*\(uu_id=\d+,\s*'), ' (')
+          .trim(),
       typeName: json['type_name'] ?? '',
     );
   }

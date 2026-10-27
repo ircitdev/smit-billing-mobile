@@ -15,12 +15,15 @@ class VideoArchiveScreen extends StatefulWidget {
   final int cameraId;
   final String title;
   final List<ArchiveCameraRef> cameras; // для селектора (если >1)
+  /// Момент события (лента событий камер): открыть его день и проиграть минуту с 10 с до него.
+  final DateTime? startAt;
 
   const VideoArchiveScreen({
     super.key,
     required this.cameraId,
     required this.title,
     this.cameras = const [],
+    this.startAt,
   });
 
   @override
@@ -64,7 +67,16 @@ class _VideoArchiveScreenState extends State<VideoArchiveScreen> {
   void initState() {
     super.initState();
     _camId = widget.cameraId;
-    _loadIntervals();
+    final at = widget.startAt;
+    if (at != null) {
+      final local = at.toLocal();
+      _date = DateTime(local.year, local.month, local.day);
+    }
+    _loadIntervals().then((_) {
+      if (at != null && mounted) {
+        _playClip(at.toUtc().subtract(const Duration(seconds: 10)).toIso8601String(), 60);
+      }
+    });
   }
 
   @override

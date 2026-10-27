@@ -129,7 +129,7 @@ class ConfigProvider extends ChangeNotifier {
       _primaryColor = AuthProviderInfo._parseColor(j['primary_color'].toString());
     }
     _brandName = (j['short'] ?? j['name'] ?? _brandName).toString();
-    _logoUrl = (j['logo_url'] ?? '').toString();
+    _logoUrl = ApiClient.absUrl((j['logo_url'] ?? '').toString());
     final support = (j['support'] as Map?) ?? {};
     _supportPhone = (support['phone'] ?? '').toString();
     _supportEmail = (support['email'] ?? '').toString();
