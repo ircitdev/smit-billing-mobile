@@ -2,7 +2,7 @@ name: smit_billing
 description: Мобильное приложение абонента СмИТ Биллинг
 publish_to: 'none'
 
-version: 1.4.0+43
+version: 1.5.1+44
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -41,7 +41,7 @@ dependencies:
   # In-app review
   in_app_review: ^2.0.9
   # Utils
-  intl: ^0.20.3
+  intl: '>=0.20.2 <0.21.0'
   shared_preferences: ^2.3.4
   package_info_plus: ^8.0.2
 
