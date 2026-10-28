@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/account_provider.dart';
+import '../providers/config_provider.dart';
 import '../models/finance_operation.dart';
 import '../theme/app_status_colors.dart';
 import '../widgets/error_state.dart';
@@ -48,9 +49,14 @@ class _FinanceTabState extends State<FinanceTab> {
       }
     }
 
+    // флаги настроек ЛК: выключенное оператором не показываем
+    final config = context.watch<ConfigProvider>();
+    final historyOn = config.feature('payment_history');
+    final promiseOn = config.feature('promise_pay');
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('История платежей'),
+        title: Text(historyOn ? 'История платежей' : 'Финансы'),
         actions: [
           IconButton(
             icon: const Icon(Icons.add_card),
@@ -64,7 +70,15 @@ class _FinanceTabState extends State<FinanceTab> {
       ),
       body: Column(
         children: [
+          // На сколько дней хватит баланса
+          if (account.status != null) _BalanceDaysCard(
+            balance: account.status!.balance,
+            monthlyCost: account.status!.monthlyCost,
+            untilDate: account.status!.balanceUntilDate,
+          ),
+
           // Promise pay banner (hide if positive balance)
+          if (promiseOn)
           FutureBuilder<Map<String, dynamic>>(
             future: account.getPromisePay(),
             builder: (context, snapshot) {
@@ -149,6 +163,7 @@ class _FinanceTabState extends State<FinanceTab> {
           ),
 
           // Period filter
+          if (historyOn)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: SingleChildScrollView(
@@ -170,7 +185,7 @@ class _FinanceTabState extends State<FinanceTab> {
           ),
 
           // Summary
-          if (account.history.isNotEmpty)
+          if (historyOn && account.history.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -199,6 +214,18 @@ class _FinanceTabState extends State<FinanceTab> {
           const SizedBox(height: 4),
 
           // List
+          if (!historyOn)
+            Expanded(
+              child: Center(
+                child: FilledButton.tonalIcon(
+                  onPressed: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const PaymentScreen())),
+                  icon: const Icon(Icons.add_card),
+                  label: const Text('Пополнить'),
+                ),
+              ),
+            )
+          else
           Expanded(
             child: account.isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -252,6 +279,70 @@ class _FinanceTabState extends State<FinanceTab> {
                       ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+String _daysWord(int n) {
+  final m10 = n % 10, m100 = n % 100;
+  if (m10 == 1 && m100 != 11) return 'день';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'дня';
+  return 'дней';
+}
+
+/// «Баланса хватит на 23 дня (до 30.11.2026)». Дата — с сервера, тот же расчёт,
+/// что в ЛК и карточке клиента (конец последнего оплаченного месяца).
+class _BalanceDaysCard extends StatelessWidget {
+  final double balance;
+  final double monthlyCost;
+  final String? untilDate;
+  const _BalanceDaysCard(
+      {required this.balance, required this.monthlyCost, this.untilDate});
+
+  @override
+  Widget build(BuildContext context) {
+    if (monthlyCost <= 0) return const SizedBox();
+    final cs = Theme.of(context).colorScheme;
+    final st = AppStatusColors.of(context);
+    final until = DateTime.tryParse(untilDate ?? '');
+
+    String title;
+    String subtitle;
+    Color color;
+    IconData icon;
+    if (until != null) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final days = DateTime(until.year, until.month, until.day)
+              .difference(today)
+              .inDays +
+          1;
+      String two(int n) => n.toString().padLeft(2, '0');
+      title = 'Баланса хватит на $days ${_daysWord(days)}';
+      subtitle = 'До ${two(until.day)}.${two(until.month)}.${until.year}';
+      color = days <= 3 ? st.warning : st.success;
+      icon = Icons.event_available_outlined;
+    } else if (balance < monthlyCost) {
+      final need = (monthlyCost - balance).ceil();
+      title = 'Не хватает на следующее списание';
+      subtitle = 'Пополните баланс на $need ₽';
+      color = cs.error;
+      icon = Icons.event_busy_outlined;
+    } else {
+      return const SizedBox();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Card(
+        child: ListTile(
+          leading: Icon(icon, color: color),
+          title: Text(title,
+              style: TextStyle(fontWeight: FontWeight.w600, color: color)),
+          subtitle: Text(
+              '$subtitle · ${monthlyCost.toStringAsFixed(0)} ₽/мес'),
+        ),
       ),
     );
   }

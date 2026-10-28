@@ -15,11 +15,20 @@ class BalanceCard extends StatelessWidget {
     this.lastPayment,
   });
 
-  // Цвет суммы баланса ПОВЕРХ бренд-градиента. Положительный — белый (onBg,
-  // контраст на зелёном фоне); долг/низкий — жёлтый/красный акцент (виден).
+  // Фоны плашки (сеть/глобус) — вшиты в приложение: раньше грузились из облака
+  // и пропали, когда облако было заморожено. Меняются по дням.
+  static const _bgAssets = [
+    'assets/balance/bg1.jpg',
+    'assets/balance/bg2.jpg',
+    'assets/balance/bg3.jpg',
+    'assets/balance/bg4.jpg',
+  ];
+
+  // Цвет суммы поверх тёмного фона: положительный — белый, долг/низкий —
+  // светлые красный/янтарный (тёмные оттенки темы на фото не читаются).
   Color _balanceColor(AppStatusColors st, Color onBg) {
-    if (balance < 0) return st.danger;
-    if (balance < 100) return st.warning;
+    if (balance < 0) return const Color(0xFFFF8A80);
+    if (balance < 100) return const Color(0xFFFFD180);
     return onBg;
   }
 
@@ -28,9 +37,10 @@ class BalanceCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final st = AppStatusColors.of(context);
 
-    // Бренд-градиент темы вместо внешней картинки (раньше грузилась из GCS,
-    // который заморожен → фон не открывался). Текст поверх — onPrimary.
-    final onBg = colorScheme.onPrimary;
+    // Фон — тёмная картинка с затемнением слева (там текст), текст белый.
+    const onBg = Colors.white;
+    final now = DateTime.now();
+    final bg = _bgAssets[(now.year * 400 + now.month * 31 + now.day) % _bgAssets.length];
     return Card(
       elevation: 4,
       clipBehavior: Clip.antiAlias,
@@ -38,19 +48,28 @@ class BalanceCard extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
+            child: Image.asset(
+              bg,
+              fit: BoxFit.cover,
+              // если картинка не прочиталась — бренд-градиент, как раньше
+              errorBuilder: (_, __, ___) => DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [
                     colorScheme.primary,
                     Color.alphaBlend(
-                      Colors.black.withValues(alpha: 0.18),
-                      colorScheme.primary,
-                    ),
-                  ],
+                        Colors.black.withValues(alpha: 0.35), colorScheme.primary),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Color(0x99000000), Color(0x33000000)],
                 ),
               ),
             ),

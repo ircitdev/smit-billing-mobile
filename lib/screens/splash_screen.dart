@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
+import '../providers/config_provider.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -18,8 +21,15 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _checkAuth() async {
     final auth = context.read<AuthProvider>();
-    await auth.tryAutoLogin();
+    final cfg = context.read<ConfigProvider>();
+    // свежие настройки (онбординг, брендинг) — не дольше 3 с, иначе кэш
+    await Future.wait([
+      auth.tryAutoLogin(),
+      cfg.refresh().timeout(const Duration(seconds: 3), onTimeout: () {}),
+    ]);
 
+    if (!mounted) return;
+    await _maybeOnboarding(cfg);
     if (!mounted) return;
 
     if (auth.isAuthenticated) {
@@ -38,6 +48,20 @@ class _SplashScreenState extends State<SplashScreen> {
     } else {
       Navigator.pushReplacementNamed(context, '/login');
     }
+  }
+
+  /// Онбординг — пока клиент не видел текущую редакцию (сервер может
+  /// поднять номер редакции, чтобы показать его заново всем).
+  Future<void> _maybeOnboarding(ConfigProvider cfg) async {
+    if (!cfg.onboardingEnabled) return;
+    final prefs = await SharedPreferences.getInstance();
+    if ((prefs.getInt('onboarding_seen') ?? 0) >= cfg.onboardingVersion) return;
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) => const OnboardingScreen(),
+    ));
+    await prefs.setInt('onboarding_seen', cfg.onboardingVersion);
   }
 
   @override

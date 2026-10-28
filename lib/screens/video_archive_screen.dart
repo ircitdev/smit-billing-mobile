@@ -232,13 +232,19 @@ class _VideoArchiveScreenState extends State<VideoArchiveScreen> {
   }
 
   Future<void> _pickDate() async {
+    // границы — целые дни: иначе полночь самого раннего дня (архив, открытый из события)
+    // оказывалась раньше «первой даты», и календарь не открывался
     final now = DateTime.now();
-    final first = now.subtract(Duration(days: _retentionDays));
+    final today = DateTime(now.year, now.month, now.day);
+    final first = today.subtract(Duration(days: _retentionDays));
+    var initial = DateTime(_date.year, _date.month, _date.day);
+    if (initial.isBefore(first)) initial = first;
+    if (initial.isAfter(today)) initial = today;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _date,
+      initialDate: initial,
       firstDate: first,
-      lastDate: now,
+      lastDate: today,
       locale: const Locale('ru'),
     );
     if (picked != null) {

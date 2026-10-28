@@ -38,6 +38,27 @@ class AuthProviderInfo {
   }
 }
 
+/// Слайд онбординга (настраивается на сервере: «Брендинг → Онбординг приложения»).
+class OnboardingSlide {
+  final String icon;
+  final String title;
+  final String text;
+  final String imageUrl;
+  const OnboardingSlide(this.icon, this.title, this.text, [this.imageUrl = '']);
+}
+
+// Стандартные слайды — пока сервер не ответил (первый запуск без сети).
+const _defaultSlides = [
+  OnboardingSlide('wallet', 'Баланс и оплата',
+      'Баланс всегда перед глазами. Пополняйте счёт картой или по СБП за пару касаний, а если не хватает — возьмите обещанный платёж.'),
+  OnboardingSlide('services', 'Все услуги в одном месте',
+      'Интернет, телевидение, видеонаблюдение и гостевой Wi-Fi — смотрите, что подключено, и управляйте сами.'),
+  OnboardingSlide('video', 'Видеонаблюдение',
+      'Камеры онлайн, архив записей и события: кто пришёл и когда. Уведомление со снимком придёт сразу на телефон.'),
+  OnboardingSlide('support', 'Поддержка рядом',
+      'Пишите в чат, создавайте обращения и следите за ответами. Мы сообщим о списаниях, работах на линии и новостях.'),
+];
+
 /// Конфигурация приложения, синхронизируемая с настройками ЛК на сервере.
 /// Кэшируется в SharedPreferences, чтобы экран входа не зависел от сети.
 class ConfigProvider extends ChangeNotifier {
@@ -58,6 +79,14 @@ class ConfigProvider extends ChangeNotifier {
   String get logoUrl => _logoUrl;
   String get supportPhone => _supportPhone;
   String get supportEmail => _supportEmail;
+
+  // Онбординг при первом запуске
+  bool _onboardingEnabled = true;
+  int _onboardingVersion = 1;
+  List<OnboardingSlide> _onboardingSlides = _defaultSlides;
+  bool get onboardingEnabled => _onboardingEnabled && _onboardingSlides.isNotEmpty;
+  int get onboardingVersion => _onboardingVersion;
+  List<OnboardingSlide> get onboardingSlides => _onboardingSlides;
 
   // Способы входа
   List<AuthProviderInfo> _providers = [];
@@ -133,6 +162,22 @@ class ConfigProvider extends ChangeNotifier {
     final support = (j['support'] as Map?) ?? {};
     _supportPhone = (support['phone'] ?? '').toString();
     _supportEmail = (support['email'] ?? '').toString();
+    final onb = j['onboarding'];
+    if (onb is Map) {
+      _onboardingEnabled = onb['enabled'] != false;
+      _onboardingVersion = int.tryParse('${onb['version'] ?? 1}') ?? 1;
+      final list = (onb['slides'] as List?) ?? const [];
+      final parsed = list
+          .whereType<Map>()
+          .map((m) => OnboardingSlide(
+                '${m['icon'] ?? 'star'}',
+                '${m['title'] ?? ''}',
+                '${m['text'] ?? ''}',
+                ApiClient.absUrl('${m['image_url'] ?? ''}'),
+              ))
+          .toList();
+      _onboardingSlides = parsed.isNotEmpty ? parsed : _defaultSlides;
+    }
   }
 
   void _applyFeatures(Map<String, dynamic> j) {

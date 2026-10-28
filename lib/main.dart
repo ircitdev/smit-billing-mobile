@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'app_keys.dart';
 import 'providers/auth_provider.dart';
@@ -50,6 +51,15 @@ class SmitBillingApp extends StatelessWidget {
             title: 'СмИТ Биллинг',
             // build 3662: переходы из push-уведомлений (лента событий камер)
             navigatorKey: appNavigatorKey,
+            // календарь архива и выбор времени — по-русски; без делегатов showDatePicker
+            // с locale: ru падал, и кнопка выбора даты ничего не делала
+            locale: const Locale('ru'),
+            supportedLocales: const [Locale('ru'), Locale('en')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
             scaffoldMessengerKey: appMessengerKey,
             debugShowCheckedModeBanner: false,
             theme: ThemeData(

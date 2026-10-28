@@ -272,7 +272,8 @@ class DashboardTab extends StatelessWidget {
                                 ],
                               ],
                               // Balance sparkline
-                              if (account.history.isNotEmpty) ...[
+                              if (account.history.isNotEmpty &&
+                                  context.watch<ConfigProvider>().feature('balance_history_chart')) ...[
                                 const Divider(height: 24),
                                 Text('Динамика баланса',
                                     style: Theme.of(context)

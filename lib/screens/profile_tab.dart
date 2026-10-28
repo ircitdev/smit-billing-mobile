@@ -115,10 +115,9 @@ class _ProfileTabState extends State<ProfileTab> {
 
             const Divider(height: 32),
 
-            // Services section
+            // Services section (со своим разделителем — скрывается целиком,
+            // если раздел «Услуги» выключен в настройках ЛК)
             _ServicesSection(),
-
-            const Divider(height: 32),
 
             // Messages
             Card(
@@ -174,6 +173,9 @@ class _ProfileTabState extends State<ProfileTab> {
                       ),
                 ),
               ),
+              const SizedBox(height: 8),
+              // build 3662: уведомления в Telegram — бот ЛК
+              const _TelegramNotifyTile(),
             ],
 
             const Divider(height: 32),
@@ -191,7 +193,8 @@ class _ProfileTabState extends State<ProfileTab> {
               ),
             ),
 
-            // Change password
+            // Change password — если не запрещена в настройках ЛК
+            if (context.watch<ConfigProvider>().feature('password_change'))
             Card(
               child: ListTile(
                 leading: const Icon(Icons.lock_outline),
@@ -221,7 +224,8 @@ class _ProfileTabState extends State<ProfileTab> {
                 ),
               ),
 
-            // Voluntary block
+            // Voluntary block — если включена в настройках ЛК
+            if (context.watch<ConfigProvider>().feature('voluntary_block'))
             Card(
               child: ListTile(
                 leading: Icon(Icons.pause_circle_outline,
@@ -467,6 +471,9 @@ class _ServicesSection extends StatefulWidget {
 class _ServicesSectionState extends State<_ServicesSection> {
   List<Map<String, dynamic>>? _services;
   bool _loading = true;
+  bool _sectionOn = true; // раздел «Услуги» включён в настройках ЛК
+  bool _expanded = false;
+  static const _collapsedCount = 5;
 
   @override
   void initState() {
@@ -481,6 +488,7 @@ class _ServicesSectionState extends State<_ServicesSection> {
       if (mounted) {
         setState(() {
           _services = ((data['items'] as List?) ?? []).cast<Map<String, dynamic>>();
+          _sectionOn = data['section_enabled'] != false;
           _loading = false;
         });
       }
@@ -492,6 +500,11 @@ class _ServicesSectionState extends State<_ServicesSection> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    if (!_sectionOn) return const SizedBox.shrink();
+    final all = _services ?? const <Map<String, dynamic>>[];
+    final shown = _expanded || all.length <= _collapsedCount
+        ? all
+        : all.sublist(0, _collapsedCount);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -528,12 +541,14 @@ class _ServicesSectionState extends State<_ServicesSection> {
         else
           Card(
             child: Column(
-              children: _services!.asMap().entries.map((entry) {
+              children: [
+                ...shown.asMap().entries.map((entry) {
                 final i = entry.key;
                 final svc = entry.value;
                 final enabled = svc['enabled'] == true;
                 final name = svc['name'] ?? 'Услуга';
                 final price = svc['price'];
+                final periodic = svc['periodic'] != false;
                 return Column(
                   children: [
                     ListTile(
@@ -544,7 +559,7 @@ class _ServicesSectionState extends State<_ServicesSection> {
                       ),
                       title: Text(name, style: const TextStyle(fontSize: 14)),
                       subtitle: price != null
-                          ? Text('${double.tryParse(price.toString())?.toStringAsFixed(2) ?? price} \u20BD/мес',
+                          ? Text('${double.tryParse(price.toString())?.toStringAsFixed(2) ?? price} \u20BD${periodic ? '/мес' : ' разово'}',
                               style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant))
                           : null,
                       trailing: Text(
@@ -557,12 +572,22 @@ class _ServicesSectionState extends State<_ServicesSection> {
                       ),
                       dense: true,
                     ),
-                    if (i < _services!.length - 1) const Divider(height: 1),
+                    if (i < shown.length - 1) const Divider(height: 1),
                   ],
                 );
-              }).toList(),
+                }),
+                if (all.length > _collapsedCount) ...[
+                  const Divider(height: 1),
+                  TextButton.icon(
+                    onPressed: () => setState(() => _expanded = !_expanded),
+                    icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
+                    label: Text(_expanded ? 'Свернуть' : 'Показать все (${all.length})'),
+                  ),
+                ],
+              ],
             ),
           ),
+        const Divider(height: 32),
       ],
     );
   }
@@ -861,6 +886,134 @@ class _SocialLinkTileState extends State<_SocialLinkTile> {
                 onPressed: _link,
                 child: const Text('Привязать'),
               ),
+      ),
+    );
+  }
+}
+
+/// Уведомления в Telegram (build 3662): привязка чата к боту ЛК по одноразовой
+/// ссылке. После возврата из Telegram статус перечитывается сам.
+class _TelegramNotifyTile extends StatefulWidget {
+  const _TelegramNotifyTile();
+
+  @override
+  State<_TelegramNotifyTile> createState() => _TelegramNotifyTileState();
+}
+
+class _TelegramNotifyTileState extends State<_TelegramNotifyTile>
+    with WidgetsBindingObserver {
+  bool? _linked;
+  bool _busy = false;
+  String _bot = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _load();
+  }
+
+  Future<Map<String, dynamic>?> _fetch() async {
+    try {
+      final r = await context.read<AuthProvider>().api.get('/account/telegram_link');
+      return (r as Map).cast<String, dynamic>();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _load() async {
+    final r = await _fetch();
+    if (!mounted || r == null) return;
+    setState(() {
+      _linked = r['linked'] == true;
+      _bot = '${r['bot_username'] ?? ''}';
+    });
+  }
+
+  Future<void> _connect() async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    final r = await _fetch();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    final dl = r?['deep_link'];
+    if (dl == null) {
+      messenger.showSnackBar(const SnackBar(content: Text('Не удалось получить ссылку на бота')));
+      return;
+    }
+    final ok = await launchUrl(Uri.parse('$dl'), mode: LaunchMode.externalApplication);
+    if (!ok) {
+      messenger.showSnackBar(const SnackBar(content: Text('Установите Telegram, чтобы подключить уведомления')));
+    }
+  }
+
+  Future<void> _disconnect() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Отключить Telegram?'),
+        content: const Text('Уведомления перестанут приходить в Telegram. Подключить снова можно в любой момент.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Нет')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Отключить')),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await context.read<AuthProvider>().api.delete('/account/telegram_link');
+      if (mounted) setState(() => _linked = false);
+      messenger.showSnackBar(const SnackBar(content: Text('Уведомления в Telegram отключены')));
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(content: Text('Не удалось отключить')));
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final linked = _linked == true;
+    return Card(
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: const Color(0xFF229ED9),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(Icons.send, color: Colors.white, size: 20),
+        ),
+        title: const Text('Уведомления в Telegram'),
+        subtitle: Text(_linked == null
+            ? 'Проверяем…'
+            : linked
+                ? 'Подключено${_bot.isNotEmpty ? ' · @$_bot' : ''}'
+                : 'Счета, оплаты, работы на линии и события камер'),
+        trailing: _busy || _linked == null
+            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+            : linked
+                ? TextButton(
+                    onPressed: _disconnect,
+                    style: TextButton.styleFrom(foregroundColor: cs.error),
+                    child: const Text('Отключить'),
+                  )
+                : FilledButton.tonal(onPressed: _connect, child: const Text('Подключить')),
       ),
     );
   }

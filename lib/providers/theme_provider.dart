@@ -21,11 +21,11 @@ class ThemeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Применить серверный дефолт темы (MOBILE_DARK_THEME_DEFAULT),
-  /// только если абонент сам ещё не выбирал тему.
+  /// Тема по умолчанию — системная (решение 28.10.2026): пока абонент сам не выбрал,
+  /// приложение следует теме телефона. Серверный «тёмная по умолчанию» больше не навязывается.
   void applyServerDefault(bool darkDefault) {
     if (_userChose) return;
-    final wanted = darkDefault ? ThemeMode.dark : ThemeMode.system;
+    const wanted = ThemeMode.system;
     if (_themeMode != wanted) {
       _themeMode = wanted;
       notifyListeners();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/config_provider.dart';
 import '../services/api_client.dart';
 import '../theme/app_status_colors.dart';
 import 'ticket_detail_screen.dart';
@@ -181,6 +182,7 @@ class _SupportTabState extends State<SupportTab>
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (context.watch<ConfigProvider>().feature('chat_ai')) ...[
           FloatingActionButton.extended(
             heroTag: 'chat',
             onPressed: () => Navigator.push(
@@ -191,6 +193,7 @@ class _SupportTabState extends State<SupportTab>
             label: const Text('AI-ассистент'),
           ),
           const SizedBox(height: 12),
+          ],
           FloatingActionButton.extended(
             heroTag: 'ticket',
             onPressed: _createTicket,
