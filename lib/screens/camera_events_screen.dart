@@ -12,8 +12,10 @@ import 'video_events_screen.dart';
 class CameraEventsScreen extends StatefulWidget {
   final VideoObjectModel object;
   final VideoCameraModel camera;
+  /// Встроен во вкладку «События» экрана настроек камеры — без своей шапки.
+  final bool embedded;
 
-  const CameraEventsScreen({super.key, required this.object, required this.camera});
+  const CameraEventsScreen({super.key, required this.object, required this.camera, this.embedded = false});
 
   @override
   State<CameraEventsScreen> createState() => _CameraEventsScreenState();
@@ -132,6 +134,12 @@ class _CameraEventsScreenState extends State<CameraEventsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final content = _error != null
+        ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_error!, textAlign: TextAlign.center)))
+        : _st == null
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(onRefresh: _load, child: _body());
+    if (widget.embedded) return content;
     return Scaffold(
       appBar: AppBar(title: Text('События · ${widget.camera.label}')),
       body: _error != null

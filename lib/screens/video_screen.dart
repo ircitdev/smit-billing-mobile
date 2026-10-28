@@ -7,7 +7,7 @@ import 'payment_screen.dart';
 import 'video_player_screen.dart';
 import 'video_archive_screen.dart';
 import 'video_events_screen.dart';
-import 'camera_events_screen.dart';
+import 'camera_settings_screen.dart';
 
 /// Экран «Видеонаблюдение» (mobile).
 /// Превью камер с Play, условная кнопка «Пополнить», нативный архив (build 1074).
@@ -100,7 +100,9 @@ class _VideoScreenState extends State<VideoScreen> {
                 onEvents: () => Navigator.push(context,
                     MaterialPageRoute(builder: (_) => VideoEventsScreen(object: o))),
                 onCameraEvents: (cam) => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => CameraEventsScreen(object: o, camera: cam))),
+                    MaterialPageRoute(builder: (_) => CameraSettingsScreen(object: o, camera: cam, initialTab: 4))),
+                onCameraSettings: (cam) => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => CameraSettingsScreen(object: o, camera: cam))),
               ))
           .toList(),
     );
@@ -212,6 +214,7 @@ class _ObjectCard extends StatelessWidget {
   final VoidCallback onArchiveWall;
   final VoidCallback onEvents;
   final void Function(VideoCameraModel camera) onCameraEvents;
+  final void Function(VideoCameraModel camera) onCameraSettings;
 
   const _ObjectCard({
     required this.object,
@@ -221,6 +224,7 @@ class _ObjectCard extends StatelessWidget {
     required this.onArchiveWall,
     required this.onEvents,
     required this.onCameraEvents,
+    required this.onCameraSettings,
   });
 
   @override
@@ -324,6 +328,9 @@ class _ObjectCard extends StatelessWidget {
                           onEvents: c.active && !object.camerasBlocked
                               ? () => onCameraEvents(c)
                               : null,
+                          onSettings: c.active && !object.camerasBlocked
+                              ? () => onCameraSettings(c)
+                              : null,
                         ))
                     .toList(),
               ),
@@ -410,9 +417,10 @@ class _CameraTile extends StatelessWidget {
   final VideoCameraModel camera;
   final VoidCallback? onArchive;
   final VoidCallback? onEvents;
+  final VoidCallback? onSettings;
   final String? token;
 
-  const _CameraTile({required this.camera, this.onArchive, this.onEvents, this.token});
+  const _CameraTile({required this.camera, this.onArchive, this.onEvents, this.onSettings, this.token});
 
   // build 1074: нативный HLS-плеер. Fallback: если hls_url пуст (старый сервер) —
   // достаём m3u8 из stream_url (go2rtc public + src), либо считаем непросматриваемым.
@@ -431,6 +439,7 @@ class _CameraTile extends StatelessWidget {
           builder: (_) => VideoPlayerScreen(
             hlsUrl: _liveHls,
             title: camera.label,
+            cameraId: camera.id,
           ),
         ),
       );
@@ -532,6 +541,14 @@ class _CameraTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (onSettings != null)
+                    InkWell(
+                      onTap: onSettings,
+                      child: Padding(
+                        padding: const EdgeInsets.all(2),
+                        child: Icon(Icons.tune, size: 18, color: cs.primary),
+                      ),
+                    ),
                   if (onEvents != null)
                     InkWell(
                       onTap: onEvents,

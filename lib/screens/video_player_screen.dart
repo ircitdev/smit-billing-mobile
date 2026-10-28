@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 
 /// Нативный плеер live-потока камеры (HLS через video_player, без WebView).
 /// build 1074: на Android — ExoPlayer, на iOS — AVPlayer; оба тянут HLS.
@@ -9,11 +11,14 @@ import 'package:video_player/video_player.dart';
 class VideoPlayerScreen extends StatefulWidget {
   final String hlsUrl;
   final String title;
+  /// build 3662: камера — для кнопки «Сказать» (фразы и сирена в динамик)
+  final int? cameraId;
 
   const VideoPlayerScreen({
     super.key,
     required this.hlsUrl,
     required this.title,
+    this.cameraId,
   });
 
   @override
@@ -85,6 +90,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
+          if (widget.cameraId != null)
+            IconButton(
+              tooltip: 'Сказать в динамик камеры',
+              icon: const Icon(Icons.campaign_outlined),
+              onPressed: () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                showDragHandle: true,
+                builder: (_) => VoiceSheet(cameraId: widget.cameraId!),
+              ),
+            ),
           // индикатор «прямой эфир»
           if (!_loading && !_error)
             const Padding(
@@ -168,6 +184,101 @@ class _PlayPauseOverlayState extends State<_PlayPauseOverlay> {
                 ),
               ),
       ),
+    );
+  }
+}
+
+
+/// «Сказать» из плеера: готовые фразы, свой текст, сирена. Камера без динамика — пояснение.
+class VoiceSheet extends StatefulWidget {
+  final int cameraId;
+  const VoiceSheet({super.key, required this.cameraId});
+
+  @override
+  State<VoiceSheet> createState() => _VoiceSheetState();
+}
+
+class _VoiceSheetState extends State<VoiceSheet> {
+  Map<String, dynamic>? _st;
+  final _text = TextEditingController();
+  String _status = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        final d = await context.read<AuthProvider>().api.get('/video/cameras/${widget.cameraId}/control');
+        if (mounted) setState(() => _st = Map<String, dynamic>.from(d));
+      } catch (_) {
+        if (mounted) setState(() => _st = {'ok': false, 'talk_note': 'Камера не отвечает'});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  Future<void> _say(Map<String, dynamic> data) async {
+    setState(() => _status = 'Отправляю в камеру…');
+    try {
+      final d = await context.read<AuthProvider>().api.post('/video/cameras/${widget.cameraId}/voice', data);
+      if (mounted) setState(() => _status = d['ok'] == true ? 'Камера произносит' : '${d['error'] ?? 'Не получилось'}');
+    } catch (_) {
+      if (mounted) setState(() => _status = 'Подождите несколько секунд');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final st = _st;
+    final cs = Theme.of(context).colorScheme;
+    if (st == null) return const SizedBox(height: 160, child: Center(child: CircularProgressIndicator()));
+    final on = st['ok'] == true && (st['caps'] ?? {})['talk'] == true;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.of(context).viewInsets.bottom),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Сказать в динамик камеры', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        if (!on)
+          Text('${st['talk_note'] ?? 'У камеры нет динамика — голосовые команды недоступны'}',
+              style: TextStyle(color: cs.onSurfaceVariant))
+        else ...[
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            ...((st['phrases'] ?? []) as List).map((p) => ActionChip(
+                  avatar: const Icon(Icons.play_arrow, size: 16),
+                  label: Text(p['text'] ?? '', overflow: TextOverflow.ellipsis),
+                  onPressed: () => _say({'phrase': p['key']}),
+                )),
+          ]),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _text,
+            maxLength: 200,
+            decoration: InputDecoration(
+              labelText: 'Свой текст',
+              border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.send),
+                onPressed: () {
+                  final t = _text.text.trim();
+                  if (t.isNotEmpty) _say({'text': t});
+                },
+              ),
+            ),
+          ),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(foregroundColor: cs.error),
+            onPressed: () => _say({'siren': true}),
+            icon: const Icon(Icons.notifications_active),
+            label: const Text('Сирена'),
+          ),
+        ],
+        if (_status.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_status)),
+      ]),
     );
   }
 }

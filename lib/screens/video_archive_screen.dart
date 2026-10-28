@@ -89,7 +89,9 @@ class _VideoArchiveScreenState extends State<VideoArchiveScreen> {
 
   String get _dateStr => DateFormat('yyyy-MM-dd').format(_date);
 
-  Future<void> _loadIntervals() async {
+  /// Один повтор через 2 с: короткий сбой сервера (перезапуск при выкладке) не должен
+  /// превращаться в «Ошибка загрузки интервалов».
+  Future<void> _loadIntervals({bool retried = false}) async {
     setState(() {
       _loadingIntervals = true;
       _intervalsError = null;
@@ -122,7 +124,11 @@ class _VideoArchiveScreenState extends State<VideoArchiveScreen> {
                 'Архив недоступен');
       }
     } catch (e) {
-      setState(() => _intervalsError = 'Ошибка загрузки интервалов');
+      if (!retried && mounted) {
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) return _loadIntervals(retried: true);
+      }
+      if (mounted) setState(() => _intervalsError = 'Ошибка загрузки интервалов');
     } finally {
       if (mounted) setState(() => _loadingIntervals = false);
     }
