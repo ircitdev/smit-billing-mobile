@@ -1,0 +1,98 @@
+name: TestFlight status
+
+# Состояние последних сборок в TestFlight и выдача сборки тестировщикам.
+# fix=true: ответ про шифрование (только стандартный HTTPS — освобождено),
+# сборка добавляется во все группы, во внешние — отправка на проверку бета-версии.
+on:
+  workflow_dispatch:
+    inputs:
+      fix:
+        description: "Выдать последнюю сборку тестировщикам"
+        type: boolean
+        default: true
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: App Store Connect API
+        env:
+          API_KEY_ID: ${{ secrets.APP_STORE_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_API_ISSUER_ID }}
+          API_KEY_P8: ${{ secrets.APP_STORE_API_KEY_P8 }}
+          FIX: ${{ inputs.fix }}
+        run: |
+          pip3 install PyJWT cryptography requests --quiet
+          python3 << 'PYEOF'
+          import jwt, time, requests, os
+
+          token = jwt.encode(
+              {"iss": os.environ["API_ISSUER_ID"], "exp": int(time.time()) + 1200, "aud": "appstoreconnect-v1"},
+              os.environ["API_KEY_P8"], algorithm="ES256", headers={"kid": os.environ["API_KEY_ID"]})
+          H = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+          API = "https://api.appstoreconnect.apple.com/v1"
+          fix = os.environ.get("FIX") == "true"
+
+          def get(path, **params):
+              r = requests.get(API + path, headers=H, params=params)
+              if r.status_code >= 400:
+                  print("GET", path, r.status_code, r.text[:300])
+                  return {}
+              return r.json()
+
+          apps = get("/apps", **{"filter[bundleId]": "ru.smit34.smitBilling"}).get("data", [])
+          for a in get("/apps", limit=20).get("data", []):
+              print("app:", a["id"], a["attributes"]["bundleId"], a["attributes"]["name"])
+          app_id = apps[0]["id"]
+
+          builds = get("/builds", **{"filter[app]": app_id, "sort": "-uploadedDate", "limit": 6,
+                                     "include": "buildBetaDetail,preReleaseVersion"})
+          inc = {(i["type"], i["id"]): i["attributes"] for i in builds.get("included", [])}
+          for b in builds.get("data", []):
+              at, rel = b["attributes"], b["relationships"]
+              bd = inc.get(("buildBetaDetails", (rel["buildBetaDetail"]["data"] or {}).get("id")), {})
+              pv = inc.get(("preReleaseVersions", (rel["preReleaseVersion"]["data"] or {}).get("id")), {})
+              print(f"build {pv.get('version')} ({at['version']}) {at['uploadedDate'][:16]} state={at['processingState']} "
+                    f"expired={at['expired']} encryption={at.get('usesNonExemptEncryption')} "
+                    f"internal={bd.get('internalBuildState')} external={bd.get('externalBuildState')}")
+
+          groups = get(f"/apps/{app_id}/betaGroups").get("data", [])
+          for g in groups:
+              ga = g["attributes"]
+              testers = get(f"/betaGroups/{g['id']}/betaTesters", limit=50).get("data", [])
+              gb = get(f"/betaGroups/{g['id']}/builds", limit=3, sort="-uploadedDate").get("data", [])
+              print(f"group '{ga['name']}' internal={ga['isInternalGroup']} allBuilds={ga.get('hasAccessToAllBuilds')} "
+                    f"testers={len(testers)} last_builds={[x['attributes']['version'] for x in gb]}")
+              for t in testers:
+                  print("   tester:", t["attributes"].get("email"), t["attributes"].get("state"))
+
+          if not fix or not builds.get("data"):
+              raise SystemExit(0)
+          b = builds["data"][0]
+          bid, ver = b["id"], b["attributes"]["version"]
+          if b["attributes"]["processingState"] != "VALID":
+              print("последняя сборка ещё обрабатывается:", b["attributes"]["processingState"])
+              raise SystemExit(0)
+          if b["attributes"].get("usesNonExemptEncryption") is None:
+              r = requests.patch(f"{API}/builds/{bid}", headers=H, json={"data": {"type": "builds", "id": bid,
+                                 "attributes": {"usesNonExemptEncryption": False}}})
+              print("шифрование:", r.status_code, r.text[:200] if r.status_code >= 400 else "ok")
+          for g in groups:
+              ga = g["attributes"]
+              if ga["isInternalGroup"] and ga.get("hasAccessToAllBuilds"):
+                  continue
+              r = requests.post(f"{API}/betaGroups/{g['id']}/relationships/builds", headers=H,
+                                json={"data": [{"type": "builds", "id": bid}]})
+              print(f"сборка {ver} → '{ga['name']}':", r.status_code, r.text[:200] if r.status_code >= 400 else "ok")
+          if any(not g["attributes"]["isInternalGroup"] for g in groups):
+              for loc in ("ru", "en-US"):
+                  r = requests.post(f"{API}/betaBuildLocalizations", headers=H, json={"data": {
+                      "type": "betaBuildLocalizations",
+                      "attributes": {"locale": loc, "whatsNew": "Новые игры: «Стойка», «Файрвол», «Дрон-связист», «Обходчик»."},
+                      "relationships": {"build": {"data": {"type": "builds", "id": bid}}}}})
+                  print("что нового", loc, r.status_code)
+              r = requests.post(f"{API}/betaAppReviewSubmissions", headers=H, json={"data": {
+                  "type": "betaAppReviewSubmissions",
+                  "relationships": {"build": {"data": {"type": "builds", "id": bid}}}}})
+              print("на проверку бета-версии:", r.status_code, r.text[:300] if r.status_code >= 400 else "ok")
+          PYEOF
