@@ -17,6 +17,11 @@ class ApiClient {
   String? _accessToken;
   String? _refreshToken;
 
+  /// Сервер отклонил ключ обновления (истёк, отозван, другая установка) — вход
+  /// недействителен. AuthProvider возвращает на экран входа: иначе каждый экран
+  /// показывал «Не удалось загрузить данные» до ручного выхода (1.5.5).
+  void Function()? onSessionExpired;
+
   Future<void> loadTokens() async {
     _accessToken = await _storage.read(key: 'access_token');
     _refreshToken = await _storage.read(key: 'refresh_token');
@@ -67,7 +72,11 @@ class ApiClient {
         );
         return true;
       }
-    } catch (_) {}
+      if (resp.statusCode == 401 || resp.statusCode == 403) {
+        await clearTokens();
+        onSessionExpired?.call();
+      }
+    } catch (_) {/* нет сети — вход не трогаем */}
     return false;
   }
 

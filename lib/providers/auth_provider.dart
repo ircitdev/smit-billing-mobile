@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
+import '../app_keys.dart';
 import '../services/api_client.dart';
 import '../services/home_widgets.dart';
 import '../services/push_service.dart';
@@ -21,6 +22,16 @@ class AuthProvider extends ChangeNotifier {
   String? get error => _error;
   bool get biometricAvailable => _biometricAvailable;
   bool get biometricEnabled => _biometricEnabled;
+
+  AuthProvider() {
+    api.onSessionExpired = () {
+      if (!_isAuthenticated) return;   // параллельные запросы получают отказ разом
+      HomeWidgets.clear();
+      _isAuthenticated = false;
+      notifyListeners();
+      appNavigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (_) => false);
+    };
+  }
 
   Future<void> tryAutoLogin() async {
     await api.loadTokens();
