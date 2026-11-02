@@ -10,6 +10,10 @@ on:
         description: "Выдать последнюю сборку тестировщикам"
         type: boolean
         default: true
+      public_link:
+        description: "Включить пригласительную ссылку внешней группы"
+        type: boolean
+        default: false
 
 jobs:
   status:
@@ -21,6 +25,7 @@ jobs:
           API_ISSUER_ID: ${{ secrets.APP_STORE_API_ISSUER_ID }}
           API_KEY_P8: ${{ secrets.APP_STORE_API_KEY_P8 }}
           FIX: ${{ inputs.fix }}
+          PUBLIC_LINK: ${{ inputs.public_link }}
         run: |
           pip3 install PyJWT cryptography requests --quiet
           python3 << 'PYEOF'
@@ -65,6 +70,20 @@ jobs:
                     f"testers={len(testers)} last_builds={[x['attributes']['version'] for x in gb]}")
               for t in testers:
                   print("   tester:", t["attributes"].get("email"), t["attributes"].get("state"))
+              if ga.get("publicLinkEnabled"):
+                  print(f"   ссылка: {ga.get('publicLink')} лимит={ga.get('publicLinkLimit')}")
+
+          # пригласительная ссылка: только у внешней группы; откроется, когда сборка пройдёт проверку бета-версии
+          if os.environ.get("PUBLIC_LINK") == "true":
+              for g in groups:
+                  if g["attributes"]["isInternalGroup"]:
+                      continue
+                  r = requests.patch(f"{API}/betaGroups/{g['id']}", headers=H, json={"data": {
+                      "type": "betaGroups", "id": g["id"],
+                      "attributes": {"publicLinkEnabled": True, "publicLinkLimitEnabled": False}}})
+                  a = r.json().get("data", {}).get("attributes", {}) if r.status_code < 400 else {}
+                  print(f"ссылка группы '{g['attributes']['name']}':", r.status_code,
+                        a.get("publicLink") or r.text[:300])
 
           if not fix or not builds.get("data"):
               raise SystemExit(0)
