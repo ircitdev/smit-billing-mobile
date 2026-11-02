@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import '../services/api_client.dart';
+import '../services/home_widgets.dart';
 import '../services/push_service.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -170,6 +171,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    await HomeWidgets.clear();
     await api.clearTokens();
     _isAuthenticated = false;
     notifyListeners();
