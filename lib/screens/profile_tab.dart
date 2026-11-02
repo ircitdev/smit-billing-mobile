@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:image_picker/image_picker.dart';
 import '../providers/auth_provider.dart';
 import '../providers/account_provider.dart';
 import '../providers/theme_provider.dart';
@@ -13,6 +14,7 @@ import '../services/review_service.dart';
 import 'messages_screen.dart';
 import 'change_password_screen.dart';
 import 'game_hub.dart';
+import 'avatar_crop_screen.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
@@ -24,6 +26,70 @@ class ProfileTab extends StatefulWidget {
 class _ProfileTabState extends State<ProfileTab> {
   int _avatarTapCount = 0;
   DateTime? _lastTap;
+  String _avatarUrl = '';
+  bool _avatarBusy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvatar();
+  }
+
+  Future<void> _loadAvatar() async {
+    try {
+      final data = await context.read<AuthProvider>().api.get('/account/avatar');
+      if (mounted && data is Map) setState(() => _avatarUrl = (data['url'] ?? '') as String);
+    } catch (_) {/* старый сервер — без аватарки */}
+  }
+
+  /// Выбор фото → кадрирование до квадрата → сервер (512 px, модерация).
+  Future<void> _changeAvatar() async {
+    final api = context.read<AuthProvider>().api;
+    final messenger = ScaffoldMessenger.of(context);
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(leading: const Icon(Icons.photo_library_outlined), title: const Text('Выбрать из галереи'),
+              onTap: () => Navigator.pop(context, 'gallery')),
+          ListTile(leading: const Icon(Icons.photo_camera_outlined), title: const Text('Сделать фото'),
+              onTap: () => Navigator.pop(context, 'camera')),
+          if (_avatarUrl.isNotEmpty)
+            ListTile(leading: const Icon(Icons.delete_outline), title: const Text('Убрать фото'),
+                onTap: () => Navigator.pop(context, 'delete')),
+        ]),
+      ),
+    );
+    if (action == null || !mounted) return;
+    if (action == 'delete') {
+      try {
+        await api.delete('/account/avatar');
+        setState(() => _avatarUrl = '');
+      } catch (_) {}
+      return;
+    }
+    final file = await ImagePicker().pickImage(
+      source: action == 'camera' ? ImageSource.camera : ImageSource.gallery,
+      maxWidth: 2048, maxHeight: 2048, imageQuality: 90,
+    );
+    if (file == null || !mounted) return;
+    final bytes = await file.readAsBytes();
+    if (!mounted) return;
+    final crop = await Navigator.push<Map<String, int>>(
+        context, MaterialPageRoute(builder: (_) => AvatarCropScreen(bytes: bytes)));
+    if (crop == null || !mounted) return;
+    setState(() => _avatarBusy = true);
+    try {
+      final r = await api.upload('/account/avatar', bytes, 'avatar.jpg',
+          fields: crop.map((k, v) => MapEntry(k, '$v')));
+      if (mounted) setState(() => _avatarUrl = (r['url'] ?? '') as String);
+      messenger.showSnackBar(const SnackBar(content: Text('Аватарка обновлена')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('ApiException: ', ''))));
+    } finally {
+      if (mounted) setState(() => _avatarBusy = false);
+    }
+  }
 
   String _getInitials(String name) {
     if (name.isEmpty) return '?';
@@ -66,16 +132,41 @@ class _ProfileTabState extends State<ProfileTab> {
             Center(
               child: Column(
                 children: [
-                  GestureDetector(
-                    onTap: _onAvatarTap,
-                    child: CircleAvatar(
-                      radius: 40,
-                      child: Text(
-                        _getInitials(status?.name ?? ''),
-                        style: const TextStyle(fontSize: 28),
+                  Stack(clipBehavior: Clip.none, children: [
+                    GestureDetector(
+                      onTap: _onAvatarTap,
+                      child: CircleAvatar(
+                        radius: 40,
+                        backgroundImage: _avatarUrl.isNotEmpty ? NetworkImage(_avatarUrl) : null,
+                        child: _avatarUrl.isNotEmpty
+                            ? null
+                            : Text(
+                                _getInitials(status?.name ?? ''),
+                                style: const TextStyle(fontSize: 28),
+                              ),
                       ),
                     ),
-                  ),
+                    // аватарка видна в турнирных таблицах игр (после проверки фото)
+                    Positioned(
+                      right: -4,
+                      bottom: -4,
+                      child: Material(
+                        color: colorScheme.primary,
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: _avatarBusy ? null : _changeAvatar,
+                          child: Padding(
+                            padding: const EdgeInsets.all(7),
+                            child: _avatarBusy
+                                ? SizedBox(width: 16, height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: colorScheme.onPrimary))
+                                : Icon(Icons.photo_camera, size: 16, color: colorScheme.onPrimary),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ]),
                   const SizedBox(height: 12),
                   Text(
                     status?.name ?? '',

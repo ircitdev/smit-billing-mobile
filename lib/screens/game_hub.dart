@@ -294,7 +294,7 @@ class _OverallTab extends StatelessWidget {
         return ListTile(
           tileColor: isMe ? Colors.amber.withOpacity(0.08) : null,
           leading: SizedBox(width: 36, child: Center(child: Text(medal, style: TextStyle(fontSize: i < 3 ? 24 : 16)))),
-          title: Text(e['name'] ?? '???', style: TextStyle(fontWeight: isMe ? FontWeight.w900 : FontWeight.w600)),
+          title: _PlayerName(e, isMe),
           trailing: Text('${e['total']}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: i < 3 ? Colors.amber[700] : null)),
         );
       },
@@ -336,7 +336,7 @@ class _PerGameTab extends StatelessWidget {
                   return ListTile(
                     tileColor: isMe ? Colors.amber.withOpacity(0.08) : null,
                     leading: SizedBox(width: 36, child: Center(child: Text(medal, style: TextStyle(fontSize: i < 3 ? 24 : 16)))),
-                    title: Text(e['name'] ?? '???', style: TextStyle(fontWeight: isMe ? FontWeight.w900 : FontWeight.w600)),
+                    title: _PlayerName(e, isMe),
                     trailing: Text('${e['score']}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: i < 3 ? Colors.amber[700] : null)),
                   );
                 },
@@ -346,5 +346,30 @@ class _PerGameTab extends StatelessWidget {
         ),
       ]),
     );
+  }
+}
+
+
+/// Имя игрока с аватаркой в кружке слева (фото после проверки или первая буква).
+class _PlayerName extends StatelessWidget {
+  final Map e;
+  final bool isMe;
+  const _PlayerName(this.e, this.isMe);
+
+  @override
+  Widget build(BuildContext context) {
+    final name = (e['name'] ?? '???').toString();
+    final url = (e['avatar'] ?? '').toString();
+    return Row(children: [
+      CircleAvatar(
+        radius: 16,
+        backgroundImage: url.isNotEmpty ? NetworkImage(url) : null,
+        child: url.isNotEmpty ? null : Text(name.isNotEmpty ? name[0] : '?',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+      ),
+      const SizedBox(width: 10),
+      Expanded(child: Text(name, overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontWeight: isMe ? FontWeight.w900 : FontWeight.w600))),
+    ]);
   }
 }

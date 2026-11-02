@@ -199,6 +199,24 @@ class ApiClient {
     );
   }
 
+  /// Отправка файла multipart (аватарка). fields — обычные поля формы.
+  Future<Map<String, dynamic>> upload(String path, List<int> bytes, String filename,
+      {String field = 'avatar', Map<String, String> fields = const {}}) async {
+    Future<http.Response> send() async {
+      final req = http.MultipartRequest('POST', Uri.parse('$baseUrl$path'));
+      if (_accessToken != null) req.headers['Authorization'] = 'Bearer $_accessToken';
+      req.fields.addAll(fields);
+      req.files.add(http.MultipartFile.fromBytes(field, bytes, filename: filename));
+      return http.Response.fromStream(await req.send());
+    }
+    var resp = await send();
+    if (resp.statusCode == 401 && await _refreshAccessToken()) resp = await send();
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return jsonDecode(resp.body);
+    }
+    throw ApiException(_parseError(resp.body), resp.statusCode);
+  }
+
   Future<Map<String, dynamic>> delete(String path) async {
     var resp = await http.delete(
       Uri.parse('$baseUrl$path'),

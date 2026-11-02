@@ -110,8 +110,8 @@
 
 	<!-- Privacy descriptions -->
 	<key>NSCameraUsageDescription</key>
-	<string>Для прикрепления фото к обращению в поддержку</string>
+	<string>Для фото в обращении в поддержку и аватарки профиля</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Для прикрепления фото к обращению в поддержку</string>
+	<string>Для фото в обращении в поддержку и аватарки профиля</string>
 </dict>
 </plist>
