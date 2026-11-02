@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/account_provider.dart';
-import 'games/pacman_game.dart';
 import 'games/snake_game.dart';
-import 'games/tetris_game.dart';
 import 'games/minesweeper_game.dart';
 import 'games/game2048.dart';
-import 'games/breakout_game.dart';
-import 'games/flappy_game.dart';
-import 'games/helicopter_game.dart';
 import 'games/web_game_screen.dart';
 
 class _GameDef {
@@ -17,9 +12,10 @@ class _GameDef {
   final String emoji;
   final Color color;
   final Color bg;
-  final Widget Function() builder;
-  /// Игра с сервера (оболочка SmitGame, честный счёт). Встроенная [builder] —
-  /// запасной путь, если сервер старый или игра выключена.
+  /// Встроенная версия — запасной путь, если сервер старый или игра выключена.
+  /// У игр, которых в приложении нет (1.5.4), — null.
+  final Widget Function()? builder;
+  /// Игра с сервера (оболочка SmitGame, честный счёт).
   final bool web;
 
   const _GameDef({
@@ -28,7 +24,7 @@ class _GameDef {
     required this.emoji,
     required this.color,
     required this.bg,
-    required this.builder,
+    this.builder,
     this.web = false,
   });
 }
@@ -50,30 +46,22 @@ final _games = [
     color: const Color(0xFFE0A03C), bg: const Color(0xFF0A1418),
     builder: () => const MinesweeperGame(), web: true,
   ),
+  // 1.5.4: свои игры вместо Pacman, Tetris, Breakout, Flappy и Helicopter (build 3710)
   _GameDef(
-    id: 'pacman', name: 'Pacman', emoji: '👻',
-    color: const Color(0xFFF1C40F), bg: const Color(0xFF1a1a2e),
-    builder: () => const PacmanGame(),
+    id: 'tetris', name: 'Стойка', emoji: '🗄️',
+    color: const Color(0xFF5BA89D), bg: const Color(0xFF0A1418), web: true,
   ),
   _GameDef(
-    id: 'tetris', name: 'Tetris', emoji: '🧱',
-    color: const Color(0xFF3498DB), bg: const Color(0xFF0F0F23),
-    builder: () => const TetrisGame(),
+    id: 'breakout', name: 'Файрвол', emoji: '🛡️',
+    color: const Color(0xFF5BA89D), bg: const Color(0xFF0A1418), web: true,
   ),
   _GameDef(
-    id: 'breakout', name: 'Breakout', emoji: '🎯',
-    color: const Color(0xFFE74C3C), bg: const Color(0xFF1a1a2e),
-    builder: () => const BreakoutGame(),
+    id: 'flappy', name: 'Дрон-связист', emoji: '🚁',
+    color: const Color(0xFF5BA89D), bg: const Color(0xFF0A1418), web: true,
   ),
   _GameDef(
-    id: 'flappy', name: 'Flappy Bird', emoji: '🐦',
-    color: const Color(0xFFF39C12), bg: const Color(0xFF4DC9F6),
-    builder: () => const FlappyGame(),
-  ),
-  _GameDef(
-    id: 'helicopter', name: 'Helicopter', emoji: '🚁',
-    color: const Color(0xFF9B59B6), bg: const Color(0xFF0a0a2e),
-    builder: () => const HelicopterGame(),
+    id: 'pacman', name: 'Обходчик', emoji: '👷',
+    color: const Color(0xFF5BA89D), bg: const Color(0xFF0A1418), web: true,
   ),
 ];
 
@@ -174,7 +162,13 @@ class _GameHubState extends State<GameHub> {
       } catch (_) {/* старый сервер или игра выключена — встроенная версия */}
       if (!mounted) return;
     }
-    Navigator.push(context, MaterialPageRoute(builder: (_) => game.builder()));
+    final builder = game.builder;
+    if (builder == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Игра сейчас недоступна. Проверьте интернет и попробуйте ещё раз')));
+      return;
+    }
+    Navigator.push(context, MaterialPageRoute(builder: (_) => builder()));
   }
 
   void _showOverallLeaderboard() async {
