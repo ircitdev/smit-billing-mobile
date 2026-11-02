@@ -9,6 +9,7 @@ import 'games/game2048.dart';
 import 'games/breakout_game.dart';
 import 'games/flappy_game.dart';
 import 'games/helicopter_game.dart';
+import 'games/web_game_screen.dart';
 
 class _GameDef {
   final String id;
@@ -17,6 +18,9 @@ class _GameDef {
   final Color color;
   final Color bg;
   final Widget Function() builder;
+  /// Игра с сервера (оболочка SmitGame, честный счёт). Встроенная [builder] —
+  /// запасной путь, если сервер старый или игра выключена.
+  final bool web;
 
   const _GameDef({
     required this.id,
@@ -25,34 +29,36 @@ class _GameDef {
     required this.color,
     required this.bg,
     required this.builder,
+    this.web = false,
   });
 }
 
 final _games = [
+  // Игры СмИТ на сервере: единый вид, счёт пересчитывает сервер (build 3700)
+  _GameDef(
+    id: '2048', name: 'Скорость', emoji: '🚀',
+    color: const Color(0xFF5BA89D), bg: const Color(0xFF0A1418),
+    builder: () => const Game2048(), web: true,
+  ),
+  _GameDef(
+    id: 'snake', name: 'Кабель', emoji: '🔌',
+    color: const Color(0xFF5BA89D), bg: const Color(0xFF0A1418),
+    builder: () => const SnakeGame(), web: true,
+  ),
+  _GameDef(
+    id: 'minesweeper', name: 'Обрыв', emoji: '⚡',
+    color: const Color(0xFFE0A03C), bg: const Color(0xFF0A1418),
+    builder: () => const MinesweeperGame(), web: true,
+  ),
   _GameDef(
     id: 'pacman', name: 'Pacman', emoji: '👻',
     color: const Color(0xFFF1C40F), bg: const Color(0xFF1a1a2e),
     builder: () => const PacmanGame(),
   ),
   _GameDef(
-    id: 'snake', name: 'Snake', emoji: '🐍',
-    color: const Color(0xFF2ECC71), bg: const Color(0xFF1B5E20),
-    builder: () => const SnakeGame(),
-  ),
-  _GameDef(
     id: 'tetris', name: 'Tetris', emoji: '🧱',
     color: const Color(0xFF3498DB), bg: const Color(0xFF0F0F23),
     builder: () => const TetrisGame(),
-  ),
-  _GameDef(
-    id: 'minesweeper', name: 'Сапёр', emoji: '💣',
-    color: const Color(0xFFE74C3C), bg: const Color(0xFFC0C0C0),
-    builder: () => const MinesweeperGame(),
-  ),
-  _GameDef(
-    id: '2048', name: '2048', emoji: '🔢',
-    color: const Color(0xFFEDCF72), bg: const Color(0xFFBBADA0),
-    builder: () => const Game2048(),
   ),
   _GameDef(
     id: 'breakout', name: 'Breakout', emoji: '🎯',
@@ -153,7 +159,21 @@ class _GameHubState extends State<GameHub> {
     );
   }
 
-  void _launch(_GameDef game) {
+  Future<void> _launch(_GameDef game) async {
+    if (game.web) {
+      try {
+        final acc = context.read<AccountProvider>();
+        final data = await acc.apiPost('/game/web-url', {'game': game.id});
+        final url = data is Map ? data['url'] as String? : null;
+        if (url != null && mounted) {
+          await Navigator.push(context, MaterialPageRoute(
+              builder: (_) => WebGameScreen(url: url, title: game.name)));
+          _loadBests();
+          return;
+        }
+      } catch (_) {/* старый сервер или игра выключена — встроенная версия */}
+      if (!mounted) return;
+    }
     Navigator.push(context, MaterialPageRoute(builder: (_) => game.builder()));
   }
 
