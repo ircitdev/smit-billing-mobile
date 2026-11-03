@@ -63,6 +63,11 @@ final _games = [
     id: 'pacman', name: 'Обходчик', emoji: '👷',
     color: const Color(0xFF5BA89D), bg: const Color(0xFF0A1418), web: true,
   ),
+  // 1.5.6: 3D-раннер робота СмИТ (build 3714–3716, честный счёт)
+  _GameDef(
+    id: 'cyber', name: 'Кибер-Раннер', emoji: '🤖',
+    color: const Color(0xFF5BA89D), bg: const Color(0xFF020617), web: true,
+  ),
 ];
 
 class GameHub extends StatefulWidget {
